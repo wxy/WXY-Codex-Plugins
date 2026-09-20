@@ -1,6 +1,17 @@
 {
-  "description": "Rename a Codex task after a GitHub pull request is successfully attached.",
+  "description": "Keep Codex task titles descriptive and prepend compact PR and active-time badges.",
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "^mcp__codex_app__attach_artifact$",
@@ -8,9 +19,42 @@
           {
             "type": "command",
             "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
-            "async": true,
             "timeout": 30,
-            "statusMessage": "Updating task title from pull request"
+            "statusMessage": "Updating task title facts"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
+            "timeout": 30,
+            "statusMessage": "Updating task title facts"
+          }
+        ]
+      }
+    ],
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
+            "timeout": 3
           }
         ]
       }
