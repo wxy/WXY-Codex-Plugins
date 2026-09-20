@@ -1,14 +1,14 @@
 {
   "name": "codex-pr-title-hook",
-  "version": "0.3.0+codex.20260920025835",
-  "description": "Keep Codex task titles descriptive with colorful workflow badges and history sync.",
+  "version": "0.3.0+codex.20260920032423",
+  "description": "Use Codex AI to summarize recent PRs, with colorful workflow badges and history sync.",
   "author": {
     "name": "Xingyu Wang"
   },
   "interface": {
     "displayName": "PR Title Hook",
-    "shortDescription": "Add colorful workflow badges to descriptive task titles.",
-    "longDescription": "Preserve the Codex-generated task summary, prepend colorful active-time, unique PR count, and optional split badges, and explicitly sync PR attachments from older Codex tasks through official App Server thread methods.",
+    "shortDescription": "AI-summarize recent PRs with workflow badges.",
+    "longDescription": "Use current-turn Codex AI to synthesize recent pull-request titles and bodies into the descriptive task summary, prepend colorful active-time, unique PR count, and optional split badges, and explicitly sync older Codex tasks through official App Server thread methods.",
     "developerName": "Xingyu Wang",
     "category": "Productivity",
     "capabilities": [],

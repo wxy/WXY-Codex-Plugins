@@ -148,8 +148,23 @@ class HistorySyncTests(unittest.TestCase):
         self.assertEqual(
             HOOK.historical_pull_request_urls(self.history_thread()),
             [
-                "https://github.com/wxy/repo/pull/1",
                 "https://github.com/wxy/repo/pull/2",
+                "https://github.com/wxy/repo/pull/1",
+            ],
+        )
+
+    def test_preserves_last_attachment_order_when_deduplicating(self):
+        self.assertEqual(
+            HOOK.unique_pull_request_urls(
+                [
+                    "https://github.com/wxy/repo/pull/1",
+                    "https://github.com/wxy/repo/pull/2",
+                    "https://github.com/wxy/repo/pull/1/",
+                ]
+            ),
+            [
+                "https://github.com/wxy/repo/pull/2",
+                "https://github.com/wxy/repo/pull/1",
             ],
         )
 
@@ -174,8 +189,17 @@ class HistorySyncTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as data_dir:
             with patch.dict(os.environ, {"CODEX_PR_TITLE_HOOK_DATA": data_dir}):
-                with patch.object(HOOK, "AppServerClient", FakeClient):
-                    message = HOOK.handle_event(
+                titles = {
+                    "https://github.com/wxy/repo/pull/1": "Add live refresh",
+                    "https://github.com/wxy/repo/pull/2": "Fix dashboard caching",
+                }
+                bodies = {url: f"Body for {title}" for url, title in titles.items()}
+                with patch.object(HOOK, "AppServerClient", FakeClient), patch.object(
+                    HOOK,
+                    "pull_request_details",
+                    side_effect=lambda url: {"title": titles[url], "body": bodies[url]},
+                ):
+                    effect = HOOK.handle_event(
                         {
                             "session_id": "01a0bc5c-260a-7842-b3ef-5bb8519f2e8f",
                             "turn_id": "sync-turn",
@@ -188,10 +212,14 @@ class HistorySyncTests(unittest.TestCase):
                 (Path(data_dir) / "01a0bc5c-260a-7842-b3ef-5bb8519f2e8f.json").read_text()
             )
         self.assertEqual(len(state["pr_urls"]), 2)
+        self.assertEqual(len(state["pr_titles"]), 2)
+        self.assertEqual(len(state["pr_bodies"]), 2)
         self.assertEqual(state["active_turn_id"], "sync-turn")
-        self.assertEqual(FakeClient.title, "⌛🔀🔀 修复仪表盘缓存")
-        self.assertIn("同步 2 个唯一 PR", message)
-        self.assertIn("不会反推", message)
+        self.assertEqual(FakeClient.title, "⌛🔀🔀 live refresh · dashboard caching")
+        self.assertIn("同步 2 个唯一 PR", effect.message)
+        self.assertIn("不会反推", effect.message)
+        self.assertIn("使用 AI 更新当前任务标题", effect.additional_context)
+        self.assertIn("Body for Add live refresh", effect.additional_context)
 
 
 class TimeTrackingTests(unittest.TestCase):
@@ -223,6 +251,32 @@ class TimeTrackingTests(unittest.TestCase):
 
 
 class TitleTests(unittest.TestCase):
+    def test_builds_a_rolling_summary_from_recent_prs(self):
+        state = HOOK.fresh_state()
+        state["pr_urls"] = [
+            "https://github.com/wxy/repo/pull/82",
+            "https://github.com/wxy/repo/pull/83",
+            "https://github.com/wxy/repo/pull/84",
+        ]
+        state["pr_titles"] = {
+            state["pr_urls"][0]: "Clarify dashboard collection and sync timestamps",
+            state["pr_urls"][1]: "Close out AI Pulse 2.0 release",
+            state["pr_urls"][2]: "Refresh stale dashboard when reopened",
+        }
+        summary = HOOK.recent_pr_summary(state)
+        self.assertEqual(
+            summary,
+            "Refresh stale dashboard… · AI Pulse 2.0 r…",
+        )
+        self.assertNotEqual(summary, state["pr_titles"][state["pr_urls"][-1]])
+
+    def test_single_pr_is_not_copied_verbatim(self):
+        state = HOOK.fresh_state()
+        url = "https://github.com/wxy/repo/pull/84"
+        state["pr_urls"] = [url]
+        state["pr_titles"] = {url: "Fix dashboard caching"}
+        self.assertEqual(HOOK.recent_pr_summary(state), "近期：dashboard caching")
+
     def test_places_metrics_before_summary(self):
         self.assertEqual(
             HOOK.compose_title("修复仪表盘缓存", 2, 4_800),
@@ -283,6 +337,33 @@ class TitleTests(unittest.TestCase):
         self.assertIn("分叉", message)
         self.assertIn("新建任务", message)
 
+    def test_stop_retains_an_ai_rewritten_summary(self):
+        state = HOOK.fresh_state()
+        state["pr_urls"] = ["https://github.com/wxy/repo/pull/84"]
+        state["base_title"] = "近期：stale dashboard refresh"
+        state["last_managed_title"] = "⌛🔀 近期：stale dashboard refresh"
+
+        class FakeClient:
+            title = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read_thread(self, _session_id):
+                return {"name": "⌛🔀 仪表盘时间与重开刷新"}
+
+            def set_thread_title(self, _session_id, title):
+                FakeClient.title = title
+
+        with patch.object(HOOK, "AppServerClient", FakeClient):
+            title, _effect = HOOK.update_managed_title("session-12345678", state, 100.0)
+        self.assertEqual(title, "⌛🔀 仪表盘时间与重开刷新")
+        self.assertEqual(state["base_title"], "仪表盘时间与重开刷新")
+        self.assertIsNone(FakeClient.title)
+
 
 class HookOutputTests(unittest.TestCase):
     def test_stop_always_returns_valid_json_shape(self):
@@ -294,8 +375,24 @@ class HookOutputTests(unittest.TestCase):
     def test_post_tool_use_only_outputs_when_there_is_a_message(self):
         self.assertIsNone(HOOK.hook_output({"hook_event_name": "PostToolUse"}, None))
         self.assertEqual(
-            HOOK.hook_output({"hook_event_name": "PostToolUse"}, "split"),
+            HOOK.hook_output(
+                {"hook_event_name": "PostToolUse"}, HOOK.HookEffect(message="split")
+            ),
             {"systemMessage": "split"},
+        )
+
+    def test_adds_ai_context_in_the_supported_hook_shape(self):
+        self.assertEqual(
+            HOOK.hook_output(
+                {"hook_event_name": "PostToolUse"},
+                HOOK.HookEffect(additional_context="summarize recent PRs"),
+            ),
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PostToolUse",
+                    "additionalContext": "summarize recent PRs",
+                }
+            },
         )
 
 

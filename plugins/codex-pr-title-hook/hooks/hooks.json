@@ -1,5 +1,5 @@
 {
-  "description": "Keep Codex task titles descriptive, prepend workflow badges, and explicitly sync historical PR attachments.",
+  "description": "Use current-turn AI to summarize recent PR titles and bodies, prepend workflow badges, and explicitly sync historical PR attachments.",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -7,7 +7,8 @@
           {
             "type": "command",
             "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
-            "timeout": 30
+            "timeout": 30,
+            "additionalContextLimit": 4000
           }
         ]
       }
@@ -20,6 +21,7 @@
             "type": "command",
             "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
             "timeout": 30,
+            "additionalContextLimit": 4000,
             "statusMessage": "Updating task title facts"
           }
         ]
