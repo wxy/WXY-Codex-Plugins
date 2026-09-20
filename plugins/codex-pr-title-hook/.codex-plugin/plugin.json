@@ -1,0 +1,17 @@
+{
+  "name": "codex-pr-title-hook",
+  "version": "0.1.0",
+  "description": "Automatically rename the current Codex task from an attached GitHub pull request.",
+  "author": {
+    "name": "Xingyu Wang"
+  },
+  "interface": {
+    "displayName": "PR Title Hook",
+    "shortDescription": "Name Codex tasks from attached pull requests.",
+    "longDescription": "After Codex successfully attaches a GitHub pull request, rename the current task to PR #number · title using the official App Server thread/name/set method.",
+    "developerName": "Xingyu Wang",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Explain how the PR title hook works and how to verify it."
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "description": "Rename a Codex task after a GitHub pull request is successfully attached.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "^mcp__codex_app__attach_artifact$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
+            "async": true,
+            "timeout": 30,
+            "statusMessage": "Updating task title from pull request"
+          }
+        ]
+      }
+    ]
+  }
+}

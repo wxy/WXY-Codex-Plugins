@@ -1,0 +1,20 @@
+{
+  "name": "codex-pr-title-hook-local",
+  "interface": {
+    "displayName": "Codex PR Title Hook Local"
+  },
+  "plugins": [
+    {
+      "name": "codex-pr-title-hook",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex-pr-title-hook"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
