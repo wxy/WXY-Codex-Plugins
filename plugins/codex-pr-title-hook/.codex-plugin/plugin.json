@@ -1,6 +1,6 @@
 {
   "name": "codex-pr-title-hook",
-  "version": "0.3.0+codex.20260920025307",
+  "version": "0.3.0+codex.20260920025835",
   "description": "Keep Codex task titles descriptive with colorful workflow badges and history sync.",
   "author": {
     "name": "Xingyu Wang"

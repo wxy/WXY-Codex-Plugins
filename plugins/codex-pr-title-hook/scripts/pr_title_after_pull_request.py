@@ -42,7 +42,7 @@ MANAGED_TEXT_PREFIX = re.compile(
     r"^⏱\d+(?:h\d{2}m|h|m)\s+·\s+PR×\d+(?:\s+·\s+⑂)?\s+—\s+"
 )
 MANAGED_BADGE_PREFIX = re.compile(
-    r"^(?:(?:⏱️)+(?:⌛)?|⌛|⏱️×\d+)\s+(?:🔀+|🔀×\d+)(?:\s+🌿)?\s+"
+    r"^(?:(?:⏱️)+(?:⌛)?|⌛|⏱️×\d+)\s*(?:🔀+|🔀×\d+)\s*(?:🌿)?\s+"
 )
 LEGACY_PR_TITLE = re.compile(r"^PR\s+#\d+\s+·\s+", re.IGNORECASE)
 
@@ -269,7 +269,7 @@ def compose_title(base_title: str, pr_count: int, active_seconds: float) -> str:
     badges = [time_badge(active_seconds), pr_badge(pr_count)]
     if should_suggest_split(pr_count, active_seconds):
         badges.append("🌿")
-    prefix = " ".join(badges) + " "
+    prefix = "".join(badges) + " "
     available = max(8, TITLE_DISPLAY_LIMIT - display_width(prefix))
     base = truncate_display(base_title, available)
     return prefix + base

@@ -189,7 +189,7 @@ class HistorySyncTests(unittest.TestCase):
             )
         self.assertEqual(len(state["pr_urls"]), 2)
         self.assertEqual(state["active_turn_id"], "sync-turn")
-        self.assertEqual(FakeClient.title, "⌛ 🔀🔀 修复仪表盘缓存")
+        self.assertEqual(FakeClient.title, "⌛🔀🔀 修复仪表盘缓存")
         self.assertIn("同步 2 个唯一 PR", message)
         self.assertIn("不会反推", message)
 
@@ -226,17 +226,17 @@ class TitleTests(unittest.TestCase):
     def test_places_metrics_before_summary(self):
         self.assertEqual(
             HOOK.compose_title("修复仪表盘缓存", 2, 4_800),
-            "⏱️⌛ 🔀🔀 修复仪表盘缓存",
+            "⏱️⌛🔀🔀 修复仪表盘缓存",
         )
 
     def test_adds_fork_symbol_at_threshold(self):
         self.assertEqual(
             HOOK.compose_title("修复仪表盘缓存", 3, 3 * 60 * 60),
-            "⏱️⏱️⏱️ 🔀🔀🔀 🌿 修复仪表盘缓存",
+            "⏱️⏱️⏱️🔀🔀🔀🌿 修复仪表盘缓存",
         )
 
     def test_time_threshold_also_adds_fork_symbol(self):
-        self.assertIn(" 🌿 ", HOOK.compose_title("Long task", 1, 3 * 60 * 60))
+        self.assertIn("🌿 ", HOOK.compose_title("Long task", 1, 3 * 60 * 60))
 
     def test_uses_hourglass_before_one_hour(self):
         self.assertEqual(HOOK.time_badge(20 * 60), "⌛")
@@ -248,7 +248,7 @@ class TitleTests(unittest.TestCase):
     def test_limits_display_width_and_preserves_metrics(self):
         title = HOOK.compose_title("很长的会话概括" * 20, 3, 12_345)
         self.assertLessEqual(HOOK.display_width(title), HOOK.TITLE_DISPLAY_LIMIT)
-        self.assertTrue(title.startswith("⏱️⏱️⏱️⌛ 🔀🔀🔀 🌿 "))
+        self.assertTrue(title.startswith("⏱️⏱️⏱️⌛🔀🔀🔀🌿 "))
         self.assertTrue(title.endswith("…"))
 
     def test_recovers_summary_from_managed_prefix(self):
@@ -258,6 +258,12 @@ class TitleTests(unittest.TestCase):
         )
 
     def test_recovers_summary_from_badge_prefix(self):
+        self.assertEqual(
+            HOOK.derive_base_title({"name": "⏱️⏱️⏱️🔀🔀🔀🌿 修复仪表盘缓存"}),
+            "修复仪表盘缓存",
+        )
+
+    def test_recovers_summary_from_spaced_badge_prefix(self):
         self.assertEqual(
             HOOK.derive_base_title({"name": "⏱️⏱️⏱️ 🔀🔀🔀 🌿 修复仪表盘缓存"}),
             "修复仪表盘缓存",

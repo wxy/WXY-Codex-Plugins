@@ -5,16 +5,16 @@ A small local Codex plugin that preserves the task's descriptive summary and add
 The resulting title is:
 
 ```text
-⏱️⌛ 🔀🔀 Fix dashboard refresh
+⏱️⌛🔀🔀 Fix dashboard refresh
 ```
 
 After three attached PRs or roughly three hours of Codex work time, a fork marker appears:
 
 ```text
-⏱️⏱️⏱️ 🔀🔀🔀 🌿 Fix dashboard refresh
+⏱️⏱️⏱️🔀🔀🔀🌿 Fix dashboard refresh
 ```
 
-Each `⏱️` is one completed hour, `⌛` is a partial hour, and each `🔀` is one unique attached PR. The badges deliberately keep accumulating instead of collapsing into a number: a visibly growing prefix, together with `🌿`, is the nudge to stop extending an overloaded task. `🌿` means the task may be worth splitting. The plugin explains it once: fork for a parallel approach to the same goal, or start a new task when the goal has changed.
+Each `⏱️` is one completed hour, `⌛` is a partial hour, and each `🔀` is one unique attached PR. Badge characters are joined with no spaces; one space separates the complete badge group from the descriptive summary. The badges deliberately keep accumulating instead of collapsing into a number: a visibly growing prefix, together with `🌿`, is the nudge to stop extending an overloaded task. `🌿` means the task may be worth splitting. The plugin explains it once: fork for a parallel approach to the same goal, or start a new task when the goal has changed.
 
 ## How it works
 
