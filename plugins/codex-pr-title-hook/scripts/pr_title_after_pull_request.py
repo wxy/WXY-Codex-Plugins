@@ -21,6 +21,10 @@ from urllib.parse import urlparse
 
 
 ATTACH_TOOL = "mcp__codex_app__attach_artifact"
+HISTORY_SYNC_PROMPT = "请使用 PR 信息更新会话标题"
+PLUGIN_MENTION_SYNC = re.compile(
+    r"^\[@[^\]]+\]\(plugin://codex-pr-title-hook(?:@[A-Za-z0-9_-]+)?\)\s+修改标题[。.!！]?$"
+)
 TITLE_DISPLAY_LIMIT = 60
 SPLIT_PR_THRESHOLD = 3
 SPLIT_ACTIVE_SECONDS = 3 * 60 * 60
@@ -93,6 +97,51 @@ def attached_pull_request(event: Any) -> tuple[str, str] | None:
     if session_id is None or url is None:
         return None
     return session_id, url
+
+
+def is_history_sync_prompt(event: Any) -> bool:
+    if not isinstance(event, dict) or event.get("hook_event_name") != "UserPromptSubmit":
+        return False
+    prompt = event.get("prompt")
+    if not isinstance(prompt, str):
+        return False
+    normalized = " ".join(prompt.split())
+    return normalized == HISTORY_SYNC_PROMPT or PLUGIN_MENTION_SYNC.fullmatch(normalized) is not None
+
+
+def historical_pull_request_urls(thread: Any) -> list[str]:
+    if not isinstance(thread, dict):
+        return []
+    turns = thread.get("turns")
+    if not isinstance(turns, list):
+        return []
+    urls: set[str] = set()
+    for turn in turns:
+        if not isinstance(turn, dict) or not isinstance(turn.get("items"), list):
+            continue
+        for item in turn["items"]:
+            if not isinstance(item, dict) or item.get("type") != "mcpToolCall":
+                continue
+            if item.get("server") != "codex_app" or item.get("tool") != "attach_artifact":
+                continue
+            error = item.get("error")
+            if item.get("status") != "completed" or (error is not None and error is not False):
+                continue
+            arguments = item.get("arguments")
+            if isinstance(arguments, str):
+                try:
+                    arguments = json.loads(arguments)
+                except json.JSONDecodeError:
+                    continue
+            if not isinstance(arguments, dict) or arguments.get("artifact_type") != "pull_request":
+                continue
+            result = item.get("result")
+            if isinstance(result, dict) and result.get("isError") is True:
+                continue
+            url = pull_request_url(arguments.get("url"))
+            if url is not None:
+                urls.add(url)
+    return sorted(urls)
 
 
 def fresh_state() -> dict[str, Any]:
@@ -358,8 +407,10 @@ class AppServerClient:
         result = response.get("result")
         return result if isinstance(result, dict) else {}
 
-    def read_thread(self, session_id: str) -> dict[str, Any]:
-        result = self.request("thread/read", {"threadId": session_id, "includeTurns": False})
+    def read_thread(self, session_id: str, include_turns: bool = False) -> dict[str, Any]:
+        result = self.request(
+            "thread/read", {"threadId": session_id, "includeTurns": include_turns}
+        )
         thread = result.get("thread")
         if not isinstance(thread, dict):
             raise HookError("app-server returned no thread")
@@ -401,6 +452,44 @@ def split_message(pr_count: int, active_seconds: float) -> str:
     )
 
 
+def sync_history_message(pr_count: int, added_count: int, split: bool) -> str:
+    message = (
+        f"已从当前任务的历史记录同步 {pr_count} 个唯一 PR"
+        f"（本次新增 {added_count} 个），并更新会话标题。"
+        "历史同步不会反推插件启用前的工作时间。"
+    )
+    if split:
+        message += (
+            "标题中的 🌿 表示可考虑拆分：同一目标的并行方案可以分叉；"
+            "目标已经变化则建议新建任务。"
+        )
+    return message
+
+
+def sync_historical_pull_requests(
+    session_id: str, state: dict[str, Any], now: float
+) -> str:
+    with AppServerClient() as client:
+        thread = client.read_thread(session_id, include_turns=True)
+        historical_urls = historical_pull_request_urls(thread)
+        if not historical_urls:
+            return "未在当前 Codex 任务的已存储历史中找到成功附加的 PR；会话标题未更改。"
+        previous_urls = set(state["pr_urls"])
+        state["pr_urls"] = sorted(previous_urls | set(historical_urls))
+        if not state.get("base_title"):
+            state["base_title"] = derive_base_title(thread)
+        active_seconds = projected_active_seconds(state, now)
+        title = compose_title(str(state["base_title"]), len(state["pr_urls"]), active_seconds)
+        if thread.get("name") != title:
+            client.set_thread_title(session_id, title)
+        split = should_suggest_split(len(state["pr_urls"]), active_seconds)
+        if split:
+            state["split_notified"] = True
+        return sync_history_message(
+            len(state["pr_urls"]), len(set(state["pr_urls"]) - previous_urls), split
+        )
+
+
 def update_managed_title(
     session_id: str, state: dict[str, Any], now: float
 ) -> tuple[str, str | None]:
@@ -432,6 +521,8 @@ def handle_event(event: Any, now: float | None = None) -> str | None:
     if event_name == "UserPromptSubmit":
         with locked_state(session_id) as state:
             begin_turn(state, event.get("turn_id"), timestamp)
+            if is_history_sync_prompt(event):
+                return sync_historical_pull_requests(session_id, state, timestamp)
         return None
     if event_name in {"Interrupt", "SessionEnd"}:
         with locked_state(session_id) as state:

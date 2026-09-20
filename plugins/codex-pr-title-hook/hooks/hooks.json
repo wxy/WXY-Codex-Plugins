@@ -1,5 +1,5 @@
 {
-  "description": "Keep Codex task titles descriptive and prepend compact PR and active-time badges.",
+  "description": "Keep Codex task titles descriptive, prepend workflow badges, and explicitly sync historical PR attachments.",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -7,7 +7,7 @@
           {
             "type": "command",
             "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
-            "timeout": 5
+            "timeout": 30
           }
         ]
       }

@@ -25,6 +25,18 @@ Each `⏱️` is one completed hour, `⌛` is a partial hour, and each `🔀` is
 
 It does not use PR titles as task titles, read unstable transcript formats, write to Codex SQLite databases, or modify the project repository where the PR was created.
 
+## Sync an existing task
+
+Open an older Codex task and send this exact prompt:
+
+```text
+请使用 PR 信息更新会话标题
+```
+
+Alternatively, explicitly mention `@PR Title Hook` in the composer and send the shorter command `修改标题`. The plugin's default prompt is set to that short command, so selecting the plugin produces the explicit mention automatically. Plain `修改标题` without the plugin mention does not trigger history sync.
+
+The `UserPromptSubmit` hook then reads the task through the official App Server `thread/read` method with turns included, finds completed `codex_app.attach_artifact` calls for pull requests, validates and deduplicates their GitHub URLs, and updates the title. It never reattaches or modifies a pull request. Historical sync does not infer work time from before the plugin was enabled; active-time tracking starts with the sync turn.
+
 ## Requirements
 
 - Codex Desktop with lifecycle hooks and App Server support

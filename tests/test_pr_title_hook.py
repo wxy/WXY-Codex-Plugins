@@ -1,6 +1,10 @@
 import importlib.util
+import json
+import os
 from pathlib import Path
+import tempfile
 import unittest
+from unittest.mock import patch
 
 
 SCRIPT = Path(__file__).parents[1] / "plugins" / "codex-pr-title-hook" / "scripts" / "pr_title_after_pull_request.py"
@@ -48,6 +52,146 @@ class PullRequestEventTests(unittest.TestCase):
         value = event()
         value["tool_input"]["url"] = "https://example.com/wxy/repo/pull/83"
         self.assertIsNone(HOOK.attached_pull_request(value))
+
+
+class HistorySyncTests(unittest.TestCase):
+    def history_thread(self):
+        return {
+            "name": "修复仪表盘缓存",
+            "turns": [
+                {
+                    "items": [
+                        {
+                            "type": "mcpToolCall",
+                            "server": "codex_app",
+                            "tool": "attach_artifact",
+                            "status": "completed",
+                            "arguments": {
+                                "artifact_type": "pull_request",
+                                "url": "https://github.com/wxy/repo/pull/2/",
+                            },
+                            "result": {},
+                            "error": None,
+                        },
+                        {
+                            "type": "mcpToolCall",
+                            "server": "codex_app",
+                            "tool": "attach_artifact",
+                            "status": "completed",
+                            "arguments": json.dumps(
+                                {
+                                    "artifact_type": "pull_request",
+                                    "url": "https://github.com/wxy/repo/pull/1",
+                                }
+                            ),
+                            "result": {},
+                            "error": None,
+                        },
+                        {
+                            "type": "mcpToolCall",
+                            "server": "codex_app",
+                            "tool": "attach_artifact",
+                            "status": "failed",
+                            "arguments": {
+                                "artifact_type": "pull_request",
+                                "url": "https://github.com/wxy/repo/pull/99",
+                            },
+                            "error": "failed",
+                        },
+                    ]
+                }
+            ],
+        }
+
+    def test_matches_only_the_explicit_sync_phrase(self):
+        self.assertTrue(
+            HOOK.is_history_sync_prompt(
+                {
+                    "hook_event_name": "UserPromptSubmit",
+                    "prompt": "  请使用 PR 信息更新会话标题  ",
+                }
+            )
+        )
+        self.assertFalse(
+            HOOK.is_history_sync_prompt(
+                {"hook_event_name": "UserPromptSubmit", "prompt": "请更新会话标题"}
+            )
+        )
+
+    def test_matches_plugin_mention_with_short_command(self):
+        self.assertTrue(
+            HOOK.is_history_sync_prompt(
+                {
+                    "hook_event_name": "UserPromptSubmit",
+                    "prompt": (
+                        "[@PR Title Hook]"
+                        "(plugin://codex-pr-title-hook@codex-pr-title-hook-local) 修改标题"
+                    ),
+                }
+            )
+        )
+        self.assertFalse(
+            HOOK.is_history_sync_prompt(
+                {"hook_event_name": "UserPromptSubmit", "prompt": "修改标题"}
+            )
+        )
+        self.assertFalse(
+            HOOK.is_history_sync_prompt(
+                {
+                    "hook_event_name": "UserPromptSubmit",
+                    "prompt": "[@Other](plugin://other@personal) 修改标题",
+                }
+            )
+        )
+
+    def test_extracts_successful_unique_historical_prs(self):
+        self.assertEqual(
+            HOOK.historical_pull_request_urls(self.history_thread()),
+            [
+                "https://github.com/wxy/repo/pull/1",
+                "https://github.com/wxy/repo/pull/2",
+            ],
+        )
+
+    def test_explicit_prompt_syncs_state_and_title(self):
+        fake_thread = self.history_thread()
+
+        class FakeClient:
+            title = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read_thread(self, _session_id, include_turns=False):
+                self.assert_include_turns = include_turns
+                return fake_thread
+
+            def set_thread_title(self, _session_id, title):
+                FakeClient.title = title
+
+        with tempfile.TemporaryDirectory() as data_dir:
+            with patch.dict(os.environ, {"CODEX_PR_TITLE_HOOK_DATA": data_dir}):
+                with patch.object(HOOK, "AppServerClient", FakeClient):
+                    message = HOOK.handle_event(
+                        {
+                            "session_id": "01a0bc5c-260a-7842-b3ef-5bb8519f2e8f",
+                            "turn_id": "sync-turn",
+                            "hook_event_name": "UserPromptSubmit",
+                            "prompt": HOOK.HISTORY_SYNC_PROMPT,
+                        },
+                        now=100.0,
+                    )
+            state = json.loads(
+                (Path(data_dir) / "01a0bc5c-260a-7842-b3ef-5bb8519f2e8f.json").read_text()
+            )
+        self.assertEqual(len(state["pr_urls"]), 2)
+        self.assertEqual(state["active_turn_id"], "sync-turn")
+        self.assertEqual(FakeClient.title, "⌛ 🔀🔀 修复仪表盘缓存")
+        self.assertIn("同步 2 个唯一 PR", message)
+        self.assertIn("不会反推", message)
 
 
 class TimeTrackingTests(unittest.TestCase):
