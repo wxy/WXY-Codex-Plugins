@@ -9,7 +9,7 @@ A single development home and repository marketplace for Codex plugins created b
 | Plugin | Status | Description |
 | --- | --- | --- |
 | [Codex PR Title Hook](plugins/codex-pr-title-hook/README.md) | Available | Keeps Codex task titles aligned with attached pull requests and compact workflow signals. |
-| Codex Daydream | Design approved | Turns work since the previous checkpoint into a privacy-preserving cartoon-poster prompt. It will be added to the marketplace when its implementation and privacy checks are ready. |
+| [Codex Daydream](plugins/codex-daydream/README.md) | Available | Turns work since the previous checkpoint into a privacy-preserving cartoon-poster prompt. |
 
 ## Install · 安装
 
@@ -23,6 +23,7 @@ Install an available plugin:
 
 ```sh
 codex plugin add codex-pr-title-hook@wxy-codex-plugins
+codex plugin add codex-daydream@wxy-codex-plugins
 ```
 
 Start a new Codex task after installation. Plugins that include lifecycle hooks must also be reviewed and trusted before those hooks run.

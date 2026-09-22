@@ -1,0 +1,18 @@
+{
+  "name": "codex-daydream",
+  "version": "0.1.0",
+  "description": "Turn recent Codex work into a privacy-preserving cartoon-poster concept and image-generation prompt.",
+  "author": {
+    "name": "Xingyu Wang"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codex Daydream",
+    "shortDescription": "Make a private cartoon poster from today's work.",
+    "longDescription": "Read a bounded, locally sanitized slice of today's Codex tasks, turn the work into playful visual metaphors, and produce a copy-ready prompt for an image model without exposing project names, code, paths, people, credentials, or exact operational details.",
+    "developerName": "Xingyu Wang",
+    "category": "Productivity",
+    "capabilities": ["Local-only history scan", "Privacy abstraction", "Poster prompts"],
+    "defaultPrompt": "把我从上次总结以来的 Codex 工作变成一张保护隐私的卡通海报提示词。"
+  }
+}
