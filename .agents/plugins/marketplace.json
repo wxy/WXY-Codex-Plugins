@@ -1,7 +1,7 @@
 {
-  "name": "codex-pr-title-hook-local",
+  "name": "wxy-codex-plugins",
   "interface": {
-    "displayName": "Codex PR Title Hook Local"
+    "displayName": "WXY Codex Plugins"
   },
   "plugins": [
     {

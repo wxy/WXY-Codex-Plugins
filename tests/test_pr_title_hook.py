@@ -123,7 +123,7 @@ class HistorySyncTests(unittest.TestCase):
         )
 
     def test_matches_plugin_mention_with_short_command(self):
-        mention = "[@PR Title Hook](plugin://codex-pr-title-hook@codex-pr-title-hook-local)"
+        mention = "[@PR Title Hook](plugin://codex-pr-title-hook@wxy-codex-plugins)"
         for prompt in (mention, f"{mention} 修改标题", f"{mention} 任意自然语言都可以"):
             with self.subTest(prompt=prompt):
                 self.assertTrue(
