@@ -26,6 +26,8 @@ Each `⏱️` is one completed hour, `⌛` is a partial hour of at least ten min
 6. The hook then adds a short developer-context request to the current Codex turn. Codex treats the PR metadata as untrusted data, uses AI to synthesize the shared recent changes, and calls the task-title tool before the turn ends. The exact badge prefix and total title-width limit are preserved.
 7. The hook itself calls Codex App Server's stable `thread/read` and `thread/name/set` methods with the hook's `session_id`; the AI-written title is recognized and retained by the later `Stop` hook.
 
+The plugin is inactive for unrelated tasks. A task becomes managed only after a successful pull-request attachment or an explicit `@PR Title Hook`/fallback sync request. Lifecycle events for every other task return immediately without creating task state, reading the task, or changing its title. Hook commands are fail-open: a missing cached script or a handled runtime error cannot block the surrounding Codex task.
+
 It never asks AI to infer from titles alone: both PR titles and bounded PR-body excerpts are supplied. It also instructs Codex not to follow instructions embedded in PR content. A single PR is labeled as recent work in the deterministic fallback; multiple PRs become a rolling topic summary until the AI-written synthesis replaces it. The plugin does not read unstable transcript formats, write to Codex SQLite databases, or modify the project repository where the PR was created.
 
 ## Sync an existing task

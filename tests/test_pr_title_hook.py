@@ -1,6 +1,8 @@
 import importlib.util
+import io
 import json
 import os
+from contextlib import redirect_stderr
 from pathlib import Path
 import tempfile
 import unittest
@@ -227,6 +229,7 @@ class HistorySyncTests(unittest.TestCase):
                 (Path(data_dir) / "01a0bc5c-260a-7842-b3ef-5bb8519f2e8f.json").read_text()
             )
         self.assertEqual(len(state["pr_urls"]), 2)
+        self.assertTrue(state["managed"])
         self.assertEqual(len(state["pr_titles"]), 2)
         self.assertEqual(len(state["pr_bodies"]), 2)
         self.assertEqual(state["active_turn_id"], "sync-turn")
@@ -238,6 +241,12 @@ class HistorySyncTests(unittest.TestCase):
 
 
 class TimeTrackingTests(unittest.TestCase):
+    def test_existing_pr_state_migrates_to_managed(self):
+        state = HOOK.normalized_state(
+            {"pr_urls": ["https://github.com/wxy/repo/pull/1"]}
+        )
+        self.assertTrue(state["managed"])
+
     def test_counts_agent_turn_time(self):
         state = HOOK.fresh_state()
         HOOK.begin_turn(state, "turn-a", 100.0)
@@ -463,6 +472,7 @@ class TitleTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as data_dir:
             stale_state = HOOK.fresh_state()
+            stale_state["managed"] = True
             stale_state["active_turn_id"] = "abandoned-turn"
             stale_state["turn_started_at"] = 100.0
             state_path = Path(data_dir) / "01a0bc5c-260a-7842-b3ef-5bb8519f2e8f.json"
@@ -486,6 +496,45 @@ class TitleTests(unittest.TestCase):
 
 
 class HookOutputTests(unittest.TestCase):
+    def test_unrelated_prompt_and_stop_do_not_create_state_or_open_app_server(self):
+        class ForbiddenClient:
+            def __init__(self):
+                raise AssertionError("unrelated task must not open App Server")
+
+        session_id = "unmanaged-session-1234"
+        with tempfile.TemporaryDirectory() as data_dir:
+            with patch.dict(os.environ, {"CODEX_PR_TITLE_HOOK_DATA": data_dir}), patch.object(
+                HOOK, "AppServerClient", ForbiddenClient
+            ):
+                self.assertIsNone(
+                    HOOK.handle_event(
+                        {
+                            "session_id": session_id,
+                            "turn_id": "turn-1",
+                            "hook_event_name": "UserPromptSubmit",
+                            "prompt": "继续处理别的任务",
+                        },
+                        now=100,
+                    )
+                )
+                self.assertIsNone(
+                    HOOK.handle_event(
+                        {
+                            "session_id": session_id,
+                            "turn_id": "turn-1",
+                            "hook_event_name": "Stop",
+                        },
+                        now=200,
+                    )
+                )
+            self.assertFalse((Path(data_dir) / f"{session_id}.json").exists())
+
+    def test_known_hook_errors_are_fail_open(self):
+        with patch.object(HOOK.sys, "stdin", io.StringIO("not json")), redirect_stderr(
+            io.StringIO()
+        ):
+            self.assertEqual(HOOK.main(), 0)
+
     def test_stop_always_returns_valid_json_shape(self):
         self.assertEqual(
             HOOK.hook_output({"hook_event_name": "Stop"}, None),

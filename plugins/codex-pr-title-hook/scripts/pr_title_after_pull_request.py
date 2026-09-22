@@ -217,6 +217,7 @@ def unique_pull_request_urls(values: Any) -> list[str]:
 def fresh_state() -> dict[str, Any]:
     return {
         "version": STATE_VERSION,
+        "managed": False,
         "base_title": None,
         "pr_urls": [],
         "pr_titles": {},
@@ -237,6 +238,7 @@ def normalized_state(value: Any) -> dict[str, Any]:
     if isinstance(base_title, str) and base_title.strip():
         state["base_title"] = " ".join(base_title.split())
     state["pr_urls"] = unique_pull_request_urls(value.get("pr_urls"))
+    state["managed"] = value.get("managed") is True or bool(state["pr_urls"])
     titles = value.get("pr_titles")
     if isinstance(titles, dict):
         state["pr_titles"] = {
@@ -511,17 +513,31 @@ def data_root() -> Path:
     return root
 
 
+def state_path(session_id: str) -> Path:
+    return data_root() / f"{session_id}.json"
+
+
+def task_is_managed(session_id: str) -> bool:
+    path = state_path(session_id)
+    if not path.is_file():
+        return False
+    try:
+        return normalized_state(json.loads(path.read_text(encoding="utf-8")))["managed"] is True
+    except (json.JSONDecodeError, OSError):
+        return False
+
+
 @contextmanager
 def locked_state(session_id: str) -> Iterator[dict[str, Any]]:
     root = data_root()
-    state_path = root / f"{session_id}.json"
+    path = root / f"{session_id}.json"
     lock_path = root / f"{session_id}.lock"
     with lock_path.open("a+", encoding="utf-8") as lock_file:
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
         try:
-            if state_path.is_file():
+            if path.is_file():
                 try:
-                    state = normalized_state(json.loads(state_path.read_text(encoding="utf-8")))
+                    state = normalized_state(json.loads(path.read_text(encoding="utf-8")))
                 except (json.JSONDecodeError, OSError):
                     state = fresh_state()
             else:
@@ -534,7 +550,7 @@ def locked_state(session_id: str) -> Iterator[dict[str, Any]]:
                 json.dump(state, temporary, ensure_ascii=False, sort_keys=True)
                 temporary.write("\n")
                 temporary_path = Path(temporary.name)
-            os.replace(temporary_path, state_path)
+            os.replace(temporary_path, path)
         finally:
             fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
@@ -746,6 +762,8 @@ def handle_event(event: Any, now: float | None = None) -> HookEffect | None:
     event_name = event.get("hook_event_name")
 
     if event_name == "SessionStart":
+        if not task_is_managed(session_id):
+            return None
         with locked_state(session_id) as state:
             # A resumed task has no active user turn yet. Discard a stale open
             # interval before rebuilding completed-turn time from history.
@@ -761,16 +779,25 @@ def handle_event(event: Any, now: float | None = None) -> HookEffect | None:
             return effect
 
     if event_name == "UserPromptSubmit":
+        history_sync = is_history_sync_prompt(event)
+        if not history_sync and not task_is_managed(session_id):
+            return None
         with locked_state(session_id) as state:
+            if history_sync:
+                state["managed"] = True
             begin_turn(state, event.get("turn_id"), timestamp)
-            if is_history_sync_prompt(event):
+            if history_sync:
                 return sync_historical_pull_requests(session_id, state, timestamp)
         return None
     if event_name in {"Interrupt", "SessionEnd"}:
+        if not task_is_managed(session_id):
+            return None
         with locked_state(session_id) as state:
             finish_turn(state, event.get("turn_id"), timestamp)
         return None
     if event_name == "Stop":
+        if not task_is_managed(session_id):
+            return None
         with locked_state(session_id) as state:
             finish_turn(state, event.get("turn_id"), timestamp)
             _, effect = update_managed_title(session_id, state, timestamp)
@@ -781,6 +808,7 @@ def handle_event(event: Any, now: float | None = None) -> HookEffect | None:
         return None
     _, url = parsed
     with locked_state(session_id) as state:
+        state["managed"] = True
         _, effect = update_managed_title(
             session_id,
             state,
@@ -818,7 +846,9 @@ def main() -> int:
         return 0
     except (HookError, json.JSONDecodeError, OSError, subprocess.SubprocessError) as error:
         print(f"PR title hook: {error}", file=sys.stderr)
-        return 1
+        # Hooks must never block the user's task. Diagnostics remain on stderr,
+        # but known failures are deliberately fail-open.
+        return 0
 
 
 if __name__ == "__main__":

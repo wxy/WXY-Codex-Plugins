@@ -7,10 +7,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
+            "command": "[ ! -f \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\" ] || /usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\" || true",
             "timeout": 30,
-            "additionalContextLimit": 4000,
-            "statusMessage": "Reconciling task title facts"
+            "additionalContextLimit": 4000
           }
         ]
       }
@@ -20,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
+            "command": "[ ! -f \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\" ] || /usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\" || true",
             "timeout": 30,
             "additionalContextLimit": 4000
           }
@@ -33,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
+            "command": "[ ! -f \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\" ] || /usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\" || true",
             "timeout": 30,
             "additionalContextLimit": 4000,
             "statusMessage": "Updating task title facts"
@@ -46,9 +45,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
-            "timeout": 30,
-            "statusMessage": "Updating task title facts"
+            "command": "[ ! -f \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\" ] || /usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\" || true",
+            "timeout": 30
           }
         ]
       }
@@ -58,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
+            "command": "[ ! -f \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\" ] || /usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\" || true",
             "timeout": 3
           }
         ]
@@ -69,7 +67,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
+            "command": "[ ! -f \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\" ] || /usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\" || true",
             "timeout": 3
           }
         ]
