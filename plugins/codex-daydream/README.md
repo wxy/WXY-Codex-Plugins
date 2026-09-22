@@ -29,3 +29,7 @@ This is privacy minimization, not a formal anonymization guarantee. Review the g
 ## Output · 输出
 
 The skill produces a title, a compact metaphor explanation, a 4:5 image-generation prompt, and a negative prompt. It deliberately avoids dashboards, exhaustive timelines, and precise productivity claims.
+
+The poster remains concrete enough to recognize the day's work: it selects two to four generalized work anchors and gives each one a visible counterpart. Every package also includes the local work date, `Xingyu Wang`, the repository address, and a short instruction telling vision-capable AI assistants to read the repository README when their user asks to install. No QR code is required; the exact URL is emitted separately:
+
+<https://github.com/wxy/WXY-Codex-Plugins>

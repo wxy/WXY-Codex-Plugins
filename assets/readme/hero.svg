@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="480" viewBox="0 0 1280 480" role="img" aria-labelledby="title desc">
+  <title id="title">WXY Codex Plugins</title>
+  <desc id="desc">A bilingual hero with connected plugin cards and a daydream poster motif.</desc>
+  <defs>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFFDF7"/><stop offset="1" stop-color="#F3E7CF"/></linearGradient>
+    <radialGradient id="glow"><stop stop-color="#F0C75F" stop-opacity=".55"/><stop offset="1" stop-color="#F0C75F" stop-opacity="0"/></radialGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#2B2620" stroke-opacity=".045"/></pattern>
+  </defs>
+  <rect width="1280" height="480" rx="28" fill="#F6F2E8"/>
+  <rect width="1280" height="480" rx="28" fill="url(#grid)"/>
+  <text x="68" y="74" fill="#A97A3B" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700" letter-spacing="3">PERSONAL PLUGIN MARKETPLACE</text>
+  <text x="68" y="142" fill="#2B2620" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, sans-serif" font-size="43" font-weight="760">WXY Codex Plugins</text>
+  <rect x="68" y="164" width="118" height="8" rx="4" fill="#E8954C"/>
+  <text x="68" y="224" fill="#2B2620" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, sans-serif" font-size="27" font-weight="650">把日常工作变成可复用的能力</text>
+  <text x="68" y="261" fill="#6B6255" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="19">Turn daily work into reusable Codex capabilities.</text>
+  <text x="68" y="315" fill="#6B6255" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, sans-serif" font-size="16">One repository · independent plugins · local-first workflows</text>
+  <text x="68" y="344" fill="#8A8070" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, sans-serif" font-size="15">一个仓库 · 独立安装 · 本地优先</text>
+  <text x="68" y="410" fill="#A97A3B" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" font-weight="700" letter-spacing="2">DISCOVER  →  INSTALL  →  INVOKE</text>
+  <line x1="512" y1="52" x2="512" y2="428" stroke="#D7CCB8" stroke-width="2"/>
+  <circle cx="900" cy="240" r="180" fill="url(#glow)"/>
+  <path d="M644 245C702 245 716 158 774 158M644 245C702 245 716 325 774 325M945 158C1011 158 1020 241 1078 241M945 325C1011 325 1020 241 1078 241" fill="none" stroke="#A97A3B" stroke-width="6" stroke-linecap="round" stroke-dasharray="2 14"/>
+  <g transform="translate(620 207)">
+    <rect width="118" height="76" rx="22" fill="#2B2620"/>
+    <path d="M38 38h42M59 17v42" stroke="#F6F2E8" stroke-width="8" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(774 111)">
+    <rect width="171" height="94" rx="20" fill="url(#card)" stroke="#D98E2B" stroke-width="3"/>
+    <circle cx="42" cy="47" r="20" fill="#E8954C"/>
+    <path d="M33 47h18M42 38v18" stroke="#FFFDF7" stroke-width="5" stroke-linecap="round"/>
+    <rect x="76" y="31" width="66" height="8" rx="4" fill="#2B2620"/>
+    <rect x="76" y="52" width="48" height="7" rx="3.5" fill="#8A8070"/>
+  </g>
+  <g transform="translate(774 278)">
+    <rect width="171" height="94" rx="20" fill="url(#card)" stroke="#F0C75F" stroke-width="3"/>
+    <path d="M34 62c28-8 22-44 56-40-8 14-5 28 9 40-27 16-48 15-65 0Z" fill="#F0C75F"/>
+    <circle cx="62" cy="45" r="5" fill="#2B2620"/>
+    <rect x="110" y="31" width="32" height="8" rx="4" fill="#2B2620"/>
+    <rect x="110" y="52" width="24" height="7" rx="3.5" fill="#8A8070"/>
+  </g>
+  <g transform="translate(1078 190)">
+    <rect width="118" height="103" rx="24" fill="#FFFDF7" stroke="#2B2620" stroke-width="3"/>
+    <path d="M29 29h60v45H29z" fill="#F3E7CF" stroke="#D98E2B" stroke-width="3"/>
+    <path d="m43 61 12-14 10 10 10-12 10 16" fill="none" stroke="#E8954C" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M92 15v14M85 22h14" stroke="#A97A3B" stroke-width="4" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -80,6 +80,13 @@ class DaydreamCollectorTests(unittest.TestCase):
         )
         result = self.collect()
         self.assertEqual(result["effective_scope"], "local-day")
+        self.assertEqual(result["poster_meta"]["date"], "2026.09.22")
+        self.assertEqual(result["poster_meta"]["creator"], "Xingyu Wang")
+        self.assertEqual(
+            result["poster_meta"]["repository_url"],
+            "https://github.com/wxy/WXY-Codex-Plugins",
+        )
+        self.assertNotIn("qr_target", result["poster_meta"])
         self.assertEqual(result["counts"]["tasks"], 1)
         texts = [item["text"] for item in result["tasks"][0]["messages"]]
         self.assertEqual(texts, ["Repair the export pipeline", "The export now passes tests."])

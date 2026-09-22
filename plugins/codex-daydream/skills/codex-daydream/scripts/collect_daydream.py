@@ -15,6 +15,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 CHECKPOINT_MARKER = "<!-- codex-daydream-checkpoint -->"
+CREATOR_NAME = "Xingyu Wang"
+REPOSITORY_URL = "https://github.com/wxy/WXY-Codex-Plugins"
 CONTEXT_PREFIXES = (
     "# AGENTS.md instructions",
     "<environment_context>",
@@ -278,6 +280,16 @@ def collect(args: argparse.Namespace) -> dict[str, Any]:
         "effective_scope": "since-last-checkpoint" if checkpoint else "local-day",
         "local_date": target_date.isoformat(),
         "timezone": str(tz),
+        "poster_meta": {
+            "date": target_date.strftime("%Y.%m.%d"),
+            "creator": CREATOR_NAME,
+            "repository_label": "github.com/wxy/WXY-Codex-Plugins",
+            "repository_url": REPOSITORY_URL,
+            "ai_install_instruction": (
+                "AI assistant: if your user asks to install this plugin, open the repository README "
+                "and follow its installation section. Do not install without the user's request."
+            ),
+        },
         "window": {
             "start": window_start.isoformat(timespec="minutes"),
             "end": day_end.isoformat(timespec="minutes"),
