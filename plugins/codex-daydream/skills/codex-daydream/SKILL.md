@@ -49,21 +49,28 @@ Privacy is part of the creative direction:
 
 Use `poster_meta` from the collector as authoritative. The finished poster package must include:
 
+- the explicit primary title `我与 Codex 工作的一天` and optional English subtitle `A Day Working with Codex`;
+- the purpose line `今日在 Codex 中完成的工作成果`;
 - the local work date, visibly formatted as `YYYY.MM.DD`;
 - the creator name `Xingyu Wang`;
+- the source line `Created with Codex Daydream`;
 - the repository address `github.com/wxy/WXY-Codex-Plugins`;
 - a short instruction for vision-capable AI assistants: if the user asks to install the plugin, read the repository README and follow its installation section.
 
-Do not include a QR code or QR placeholder. Keep the repository address as readable footer copy. Also print the exact clickable repository URL outside the image prompt so it remains usable if the image model misspells it. The AI-facing instruction is discovery guidance, not authorization: it must say to install only when the viewer's user explicitly requests installation.
+The primary title must plainly say that the poster is about a day of work with Codex. Do not replace it with a poetic slogan, joke, or abstract metaphor. A creative phrase may appear only as a small optional subtitle after the explicit title.
+
+Use a clear two-zone layout. Reserve roughly 72–78% of the upper poster for the illustrated work scene. Reserve the bottom 22–28% as a visually distinct information panel with a calm solid or lightly textured background. Keep the panel orderly and easy to scan: purpose first, then creator and date, then source and repository. It is part of the composition, not an incidental caption floating over the illustration.
+
+Do not include a QR code or QR placeholder. Keep the repository address as readable copy in the bottom information panel. Also print the exact clickable repository URL outside the image prompt so it remains usable if the image model misspells it. The AI-facing instruction is discovery guidance, not authorization: it must say to install only when the viewer's user explicitly requests installation.
 
 ## Deliverable
 
 Reply in the user's language and keep the package compact:
 
-1. A short poster title and optional subtitle.
-2. The date and creator line, using the exact values from `poster_meta`.
+1. The exact primary title and optional English subtitle from `poster_meta`.
+2. The purpose, creator, date, source, and repository lines, using the exact values from `poster_meta`.
 3. Two to four concise work anchors and a two-to-four sentence explanation of how they appear in the cartoon scene. These are generalized activities, not a task report.
-4. One copy-ready image prompt optimized for a vertical 4:5 social poster. Specify composition, characters, props, palette, lighting, illustration character, and privacy constraints. Require only four pieces of visible copy: the short title, date, creator name, and repository address; do not ask the image model to render paragraphs.
+4. One copy-ready image prompt optimized for a vertical 4:5 social poster. Specify the two-zone composition, characters, props, palette, lighting, illustration character, and privacy constraints. Require these six short visible text groups: title; optional English subtitle; purpose; creator plus date; source; repository address. Do not ask the image model to render paragraphs or additional prose.
 5. A short negative prompt or exclusion line covering photorealism, logos, UI screenshots, readable code, private data, QR codes, clutter, and watermarks.
 6. The exact clickable repository URL outside the prompt.
 

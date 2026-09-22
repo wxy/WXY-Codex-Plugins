@@ -281,8 +281,12 @@ def collect(args: argparse.Namespace) -> dict[str, Any]:
         "local_date": target_date.isoformat(),
         "timezone": str(tz),
         "poster_meta": {
+            "title": "我与 Codex 工作的一天",
+            "title_en": "A Day Working with Codex",
+            "purpose": "今日在 Codex 中完成的工作成果",
             "date": target_date.strftime("%Y.%m.%d"),
             "creator": CREATOR_NAME,
+            "source": "Created with Codex Daydream",
             "repository_label": "github.com/wxy/WXY-Codex-Plugins",
             "repository_url": REPOSITORY_URL,
             "ai_install_instruction": (

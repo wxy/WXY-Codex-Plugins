@@ -80,8 +80,12 @@ class DaydreamCollectorTests(unittest.TestCase):
         )
         result = self.collect()
         self.assertEqual(result["effective_scope"], "local-day")
+        self.assertEqual(result["poster_meta"]["title"], "我与 Codex 工作的一天")
+        self.assertEqual(result["poster_meta"]["title_en"], "A Day Working with Codex")
+        self.assertEqual(result["poster_meta"]["purpose"], "今日在 Codex 中完成的工作成果")
         self.assertEqual(result["poster_meta"]["date"], "2026.09.22")
         self.assertEqual(result["poster_meta"]["creator"], "Xingyu Wang")
+        self.assertEqual(result["poster_meta"]["source"], "Created with Codex Daydream")
         self.assertEqual(
             result["poster_meta"]["repository_url"],
             "https://github.com/wxy/WXY-Codex-Plugins",

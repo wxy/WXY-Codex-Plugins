@@ -28,8 +28,12 @@ This is privacy minimization, not a formal anonymization guarantee. Review the g
 
 ## Output · 输出
 
-The skill produces a title, a compact metaphor explanation, a 4:5 image-generation prompt, and a negative prompt. It deliberately avoids dashboards, exhaustive timelines, and precise productivity claims.
+The skill produces a compact metaphor explanation, a 4:5 image-generation prompt, and a negative prompt. Its default title is **我与 Codex 工作的一天** / **A Day Working with Codex**, making the subject explicit rather than hiding it behind an abstract slogan.
 
-The poster remains concrete enough to recognize the day's work: it selects two to four generalized work anchors and gives each one a visible counterpart. Every package also includes the local work date, `Xingyu Wang`, the repository address, and a short instruction telling vision-capable AI assistants to read the repository README when their user asks to install. No QR code is required; the exact URL is emitted separately:
+The poster remains concrete enough to recognize the day's work: it selects two to four generalized work anchors and gives each one a visible counterpart. The upper 72–78% is the cartoon work scene; the lower 22–28% is a dedicated information panel stating that the poster shows work completed in Codex, together with `Xingyu Wang`, the local work date, `Created with Codex Daydream`, and the repository address.
+
+> 海报上部用卡通场景表现当天实际做过的工作类型；下部保留独立说明区，明确写出“今日在 Codex 中完成的工作成果”、用户姓名、日期、来源与仓库地址。标题不得用隐晦口号替代主题。
+
+The package also includes a short instruction telling vision-capable AI assistants to read the repository README when their user asks to install. No QR code is required; the exact URL is emitted separately:
 
 <https://github.com/wxy/WXY-Codex-Plugins>
