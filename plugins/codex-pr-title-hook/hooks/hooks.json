@@ -1,6 +1,20 @@
 {
   "description": "Use current-turn AI to summarize recent PR titles and bodies, prepend workflow badges, and explicitly sync historical PR attachments.",
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$PLUGIN_ROOT/scripts/pr_title_after_pull_request.py\"",
+            "timeout": 30,
+            "additionalContextLimit": 4000,
+            "statusMessage": "Reconciling task title facts"
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [

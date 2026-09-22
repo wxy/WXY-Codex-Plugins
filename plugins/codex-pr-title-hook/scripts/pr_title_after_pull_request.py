@@ -8,6 +8,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+from datetime import datetime
 import re
 import selectors
 import shutil
@@ -22,8 +23,8 @@ from urllib.parse import urlparse
 
 ATTACH_TOOL = "mcp__codex_app__attach_artifact"
 HISTORY_SYNC_PROMPT = "请使用 PR 信息更新会话标题"
-PLUGIN_MENTION_SYNC = re.compile(
-    r"^\[@[^\]]+\]\(plugin://codex-pr-title-hook(?:@[A-Za-z0-9_-]+)?\)\s+修改标题[。.!！]?$"
+PLUGIN_MENTION = re.compile(
+    r"\[@[^\]]+\]\(plugin://codex-pr-title-hook(?:@[A-Za-z0-9_-]+)?\)"
 )
 TITLE_DISPLAY_LIMIT = 60
 SUMMARY_DISPLAY_LIMIT = 42
@@ -32,7 +33,7 @@ PR_BODY_CONTEXT_LIMIT = 900
 SPLIT_PR_THRESHOLD = 3
 SPLIT_ACTIVE_SECONDS = 3 * 60 * 60
 MAX_TURN_SECONDS = 6 * 60 * 60
-STATE_VERSION = 3
+STATE_VERSION = 4
 CLIENT_INFO = {
     "name": "pr_title_hook",
     "title": "PR Title Hook",
@@ -45,7 +46,8 @@ MANAGED_TEXT_PREFIX = re.compile(
     r"^⏱\d+(?:h\d{2}m|h|m)\s+·\s+PR×\d+(?:\s+·\s+⑂)?\s+—\s+"
 )
 MANAGED_BADGE_PREFIX = re.compile(
-    r"^(?:(?:⏱️)+(?:⌛)?|⌛|⏱️×\d+)\s*(?:🔀+|🔀×\d+)\s*(?:🌿)?\s+"
+    r"^(?=[⏱⌛🔀🌿])(?:(?:⏱️)+(?:⌛)?|⌛|⏱️×\d+)?\s*"
+    r"(?:🔀+|🔀×\d+)?\s*(?:🌿)?\s+"
 )
 LEGACY_PR_TITLE = re.compile(r"^PR\s+#\d+\s+·\s+", re.IGNORECASE)
 
@@ -117,7 +119,7 @@ def is_history_sync_prompt(event: Any) -> bool:
     if not isinstance(prompt, str):
         return False
     normalized = " ".join(prompt.split())
-    return normalized == HISTORY_SYNC_PROMPT or PLUGIN_MENTION_SYNC.fullmatch(normalized) is not None
+    return normalized == HISTORY_SYNC_PROMPT or PLUGIN_MENTION.search(normalized) is not None
 
 
 def historical_pull_request_urls(thread: Any) -> list[str]:
@@ -155,6 +157,47 @@ def historical_pull_request_urls(thread: Any) -> list[str]:
                     urls.remove(url)
                 urls.append(url)
     return urls
+
+
+def timestamp_seconds(value: Any) -> float | None:
+    if isinstance(value, (int, float)):
+        number = float(value)
+        return number / 1_000.0 if number > 10_000_000_000 else number
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            return None
+    return None
+
+
+def historical_active_seconds(thread: Any) -> float:
+    if not isinstance(thread, dict):
+        return 0.0
+    turns = thread.get("turns")
+    if not isinstance(turns, list):
+        return 0.0
+    total = 0.0
+    for turn in turns:
+        if not isinstance(turn, dict):
+            continue
+        started_at = timestamp_seconds(turn.get("startedAt"))
+        completed_at = timestamp_seconds(turn.get("completedAt"))
+        if started_at is None or completed_at is None:
+            continue
+        total += max(0.0, min(completed_at - started_at, MAX_TURN_SECONDS))
+    return total
+
+
+def reconcile_historical_facts(state: dict[str, Any], thread: Any) -> None:
+    state["pr_urls"] = historical_pull_request_urls(thread)
+    state["active_seconds"] = historical_active_seconds(thread)
+    state["pr_titles"] = {
+        url: title for url, title in state["pr_titles"].items() if url in state["pr_urls"]
+    }
+    state["pr_bodies"] = {
+        url: body for url, body in state["pr_bodies"].items() if url in state["pr_urls"]
+    }
 
 
 def unique_pull_request_urls(values: Any) -> list[str]:
@@ -302,20 +345,20 @@ def should_suggest_split(pr_count: int, active_seconds: float) -> bool:
 
 def time_badge(active_seconds: float) -> str:
     seconds = max(0.0, active_seconds)
+    if seconds < 10 * 60:
+        return ""
     whole_hours = int(seconds // 3_600)
     partial_hour = seconds - (whole_hours * 3_600) >= 10 * 60
-    if whole_hours == 0:
-        return "⌛"
     return ("⏱️" * whole_hours) + ("⌛" if partial_hour else "")
 
 
 def pr_badge(pr_count: int) -> str:
-    count = max(1, pr_count)
-    return "🔀" * count
+    return "🔀" * max(0, pr_count)
 
 
 def compose_title(base_title: str, pr_count: int, active_seconds: float) -> str:
-    prefix = title_badge_prefix(pr_count, active_seconds) + " "
+    badges = title_badge_prefix(pr_count, active_seconds)
+    prefix = f"{badges} " if badges else ""
     available = max(8, TITLE_DISPLAY_LIMIT - display_width(prefix))
     base = truncate_display(base_title, available)
     return prefix + base
@@ -401,10 +444,10 @@ def recent_pr_summary(state: dict[str, Any]) -> str | None:
 
 
 def title_badge_prefix(pr_count: int, active_seconds: float) -> str:
-    badges = [time_badge(active_seconds), pr_badge(pr_count)]
+    badges = time_badge(active_seconds) + pr_badge(pr_count)
     if should_suggest_split(pr_count, active_seconds):
-        badges.append("🌿")
-    return "".join(badges)
+        badges += "🌿"
+    return badges
 
 
 def ai_title_context(state: dict[str, Any], active_seconds: float) -> str | None:
@@ -613,7 +656,8 @@ def sync_history_message(pr_count: int, added_count: int, split: bool) -> str:
     message = (
         f"已从当前任务的历史记录同步 {pr_count} 个唯一 PR"
         f"（本次新增 {added_count} 个），并更新会话标题。"
-        "历史同步不会反推插件启用前的工作时间。"
+        "时间已按历史中完成回合的起止时间重新计算；这是近似工作时长，"
+        "包含回合内等待，不包含回合之间的空闲时间。"
     )
     if split:
         message += (
@@ -628,13 +672,8 @@ def sync_historical_pull_requests(
 ) -> HookEffect:
     with AppServerClient() as client:
         thread = client.read_thread(session_id, include_turns=True)
-        historical_urls = historical_pull_request_urls(thread)
-        if not historical_urls:
-            return HookEffect(
-                message="未在当前 Codex 任务的已存储历史中找到成功附加的 PR；会话标题未更改。"
-            )
         previous_urls = set(state["pr_urls"])
-        state["pr_urls"] = unique_pull_request_urls(state["pr_urls"] + historical_urls)
+        reconcile_historical_facts(state, thread)
         refresh_recent_pr_details(state, include_bodies=True)
         state["base_title"] = recent_pr_summary(state) or derive_base_title(thread)
         active_seconds = projected_active_seconds(state, now)
@@ -658,11 +697,21 @@ def update_managed_title(
     state: dict[str, Any],
     now: float,
     request_ai_summary: bool = False,
+    reconcile_history: bool = False,
+    observed_url: str | None = None,
 ) -> tuple[str, HookEffect]:
-    active_seconds = projected_active_seconds(state, now)
-    pr_count = len(state["pr_urls"])
     with AppServerClient() as client:
-        thread = client.read_thread(session_id)
+        thread = (
+            client.read_thread(session_id, include_turns=True)
+            if reconcile_history
+            else client.read_thread(session_id)
+        )
+        if reconcile_history:
+            reconcile_historical_facts(state, thread)
+        if observed_url is not None:
+            state["pr_urls"] = unique_pull_request_urls(state["pr_urls"] + [observed_url])
+        active_seconds = projected_active_seconds(state, now)
+        pr_count = len(state["pr_urls"])
         current_name = thread.get("name")
         if (
             not request_ai_summary
@@ -696,6 +745,21 @@ def handle_event(event: Any, now: float | None = None) -> HookEffect | None:
     timestamp = time.time() if now is None else now
     event_name = event.get("hook_event_name")
 
+    if event_name == "SessionStart":
+        with locked_state(session_id) as state:
+            # A resumed task has no active user turn yet. Discard a stale open
+            # interval before rebuilding completed-turn time from history.
+            state["active_turn_id"] = None
+            state["turn_started_at"] = None
+            _, effect = update_managed_title(
+                session_id,
+                state,
+                timestamp,
+                request_ai_summary=True,
+                reconcile_history=True,
+            )
+            return effect
+
     if event_name == "UserPromptSubmit":
         with locked_state(session_id) as state:
             begin_turn(state, event.get("turn_id"), timestamp)
@@ -709,19 +773,21 @@ def handle_event(event: Any, now: float | None = None) -> HookEffect | None:
     if event_name == "Stop":
         with locked_state(session_id) as state:
             finish_turn(state, event.get("turn_id"), timestamp)
-            if state["pr_urls"]:
-                _, effect = update_managed_title(session_id, state, timestamp)
-                return effect
-        return None
+            _, effect = update_managed_title(session_id, state, timestamp)
+            return effect
 
     parsed = attached_pull_request(event)
     if parsed is None:
         return None
     _, url = parsed
     with locked_state(session_id) as state:
-        state["pr_urls"] = unique_pull_request_urls(state["pr_urls"] + [url])
         _, effect = update_managed_title(
-            session_id, state, timestamp, request_ai_summary=True
+            session_id,
+            state,
+            timestamp,
+            request_ai_summary=True,
+            reconcile_history=True,
+            observed_url=url,
         )
         return effect
 

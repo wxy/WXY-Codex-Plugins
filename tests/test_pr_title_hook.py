@@ -60,6 +60,8 @@ class HistorySyncTests(unittest.TestCase):
             "name": "修复仪表盘缓存",
             "turns": [
                 {
+                    "startedAt": 10.0,
+                    "completedAt": 100.0,
                     "items": [
                         {
                             "type": "mcpToolCall",
@@ -103,7 +105,7 @@ class HistorySyncTests(unittest.TestCase):
             ],
         }
 
-    def test_matches_only_the_explicit_sync_phrase(self):
+    def test_matches_the_explicit_sync_phrase(self):
         self.assertTrue(
             HOOK.is_history_sync_prompt(
                 {
@@ -119,17 +121,14 @@ class HistorySyncTests(unittest.TestCase):
         )
 
     def test_matches_plugin_mention_with_short_command(self):
-        self.assertTrue(
-            HOOK.is_history_sync_prompt(
-                {
-                    "hook_event_name": "UserPromptSubmit",
-                    "prompt": (
-                        "[@PR Title Hook]"
-                        "(plugin://codex-pr-title-hook@codex-pr-title-hook-local) 修改标题"
-                    ),
-                }
-            )
-        )
+        mention = "[@PR Title Hook](plugin://codex-pr-title-hook@codex-pr-title-hook-local)"
+        for prompt in (mention, f"{mention} 修改标题", f"{mention} 任意自然语言都可以"):
+            with self.subTest(prompt=prompt):
+                self.assertTrue(
+                    HOOK.is_history_sync_prompt(
+                        {"hook_event_name": "UserPromptSubmit", "prompt": prompt}
+                    )
+                )
         self.assertFalse(
             HOOK.is_history_sync_prompt(
                 {"hook_event_name": "UserPromptSubmit", "prompt": "修改标题"}
@@ -151,6 +150,22 @@ class HistorySyncTests(unittest.TestCase):
                 "https://github.com/wxy/repo/pull/2",
                 "https://github.com/wxy/repo/pull/1",
             ],
+        )
+
+    def test_reconstructs_completed_turn_time_and_caps_each_turn(self):
+        thread = {
+            "turns": [
+                {"startedAt": 100, "completedAt": 700},
+                {"startedAt": 1_000, "completedAt": 1_000 + HOOK.MAX_TURN_SECONDS + 10},
+                {"startedAt": 1_700_000_000_000, "completedAt": 1_700_000_600_000},
+                {"startedAt": "2026-09-20T00:00:00Z", "completedAt": "2026-09-20T01:00:00Z"},
+                {"startedAt": 500},
+                {"startedAt": 900, "completedAt": 800},
+            ]
+        }
+        self.assertEqual(
+            HOOK.historical_active_seconds(thread),
+            600 + HOOK.MAX_TURN_SECONDS + 600 + 3_600,
         )
 
     def test_preserves_last_attachment_order_when_deduplicating(self):
@@ -215,9 +230,9 @@ class HistorySyncTests(unittest.TestCase):
         self.assertEqual(len(state["pr_titles"]), 2)
         self.assertEqual(len(state["pr_bodies"]), 2)
         self.assertEqual(state["active_turn_id"], "sync-turn")
-        self.assertEqual(FakeClient.title, "⌛🔀🔀 live refresh · dashboard caching")
+        self.assertEqual(FakeClient.title, "🔀🔀 live refresh · dashboard caching")
         self.assertIn("同步 2 个唯一 PR", effect.message)
-        self.assertIn("不会反推", effect.message)
+        self.assertIn("重新计算", effect.message)
         self.assertIn("使用 AI 更新当前任务标题", effect.additional_context)
         self.assertIn("Body for Add live refresh", effect.additional_context)
 
@@ -248,6 +263,25 @@ class TimeTrackingTests(unittest.TestCase):
         self.assertEqual(HOOK.format_duration(1), "1m")
         self.assertEqual(HOOK.format_duration(3_600), "1h")
         self.assertEqual(HOOK.format_duration(4_800), "1h20m")
+
+    def test_reconciliation_replaces_stale_cached_facts(self):
+        state = HOOK.fresh_state()
+        state["pr_urls"] = ["https://github.com/wxy/repo/pull/99"]
+        state["active_seconds"] = 99_999
+        HOOK.reconcile_historical_facts(
+            state,
+            {
+                "turns": [
+                    {
+                        "startedAt": 100,
+                        "completedAt": 1_000,
+                        "items": [],
+                    }
+                ]
+            },
+        )
+        self.assertEqual(state["pr_urls"], [])
+        self.assertEqual(state["active_seconds"], 900)
 
 
 class TitleTests(unittest.TestCase):
@@ -295,6 +329,12 @@ class TitleTests(unittest.TestCase):
     def test_uses_hourglass_before_one_hour(self):
         self.assertEqual(HOOK.time_badge(20 * 60), "⌛")
 
+    def test_omits_zero_and_sub_ten_minute_badges(self):
+        self.assertEqual(HOOK.time_badge(0), "")
+        self.assertEqual(HOOK.time_badge(599), "")
+        self.assertEqual(HOOK.pr_badge(0), "")
+        self.assertEqual(HOOK.compose_title("修复仪表盘缓存", 0, 0), "修复仪表盘缓存")
+
     def test_repeats_large_badge_counts_as_a_visual_nudge(self):
         self.assertEqual(HOOK.time_badge(5 * 60 * 60), "⏱️⏱️⏱️⏱️⏱️")
         self.assertEqual(HOOK.pr_badge(7), "🔀🔀🔀🔀🔀🔀🔀")
@@ -323,6 +363,10 @@ class TitleTests(unittest.TestCase):
             "修复仪表盘缓存",
         )
 
+    def test_recovers_summary_from_single_metric_badges(self):
+        self.assertEqual(HOOK.derive_base_title({"name": "⌛ 修复缓存"}), "修复缓存")
+        self.assertEqual(HOOK.derive_base_title({"name": "🔀🔀 修复缓存"}), "修复缓存")
+
     def test_does_not_use_legacy_pr_title_as_summary(self):
         self.assertEqual(
             HOOK.derive_base_title(
@@ -341,7 +385,7 @@ class TitleTests(unittest.TestCase):
         state = HOOK.fresh_state()
         state["pr_urls"] = ["https://github.com/wxy/repo/pull/84"]
         state["base_title"] = "近期：stale dashboard refresh"
-        state["last_managed_title"] = "⌛🔀 近期：stale dashboard refresh"
+        state["last_managed_title"] = "🔀 近期：stale dashboard refresh"
 
         class FakeClient:
             title = None
@@ -353,16 +397,92 @@ class TitleTests(unittest.TestCase):
                 return None
 
             def read_thread(self, _session_id):
-                return {"name": "⌛🔀 仪表盘时间与重开刷新"}
+                return {"name": "🔀 仪表盘时间与重开刷新"}
 
             def set_thread_title(self, _session_id, title):
                 FakeClient.title = title
 
         with patch.object(HOOK, "AppServerClient", FakeClient):
             title, _effect = HOOK.update_managed_title("session-12345678", state, 100.0)
-        self.assertEqual(title, "⌛🔀 仪表盘时间与重开刷新")
+        self.assertEqual(title, "🔀 仪表盘时间与重开刷新")
         self.assertEqual(state["base_title"], "仪表盘时间与重开刷新")
         self.assertIsNone(FakeClient.title)
+
+    def test_stop_removes_stale_badges_when_history_has_no_facts(self):
+        state = HOOK.fresh_state()
+        state["base_title"] = "旧概括"
+        state["last_managed_title"] = "⌛🔀 旧概括"
+
+        class FakeClient:
+            title = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read_thread(self, _session_id):
+                return {"name": "⌛🔀 旧概括"}
+
+            def set_thread_title(self, _session_id, title):
+                FakeClient.title = title
+
+        with patch.object(HOOK, "AppServerClient", FakeClient):
+            title, _effect = HOOK.update_managed_title("session-12345678", state, 100.0)
+        self.assertEqual(title, "旧概括")
+        self.assertEqual(FakeClient.title, "旧概括")
+
+    def test_session_start_reconciles_history_before_updating_title(self):
+        fake_thread = {
+            "name": "⌛🔀 旧概括",
+            "turns": [
+                {
+                    "startedAt": 0,
+                    "completedAt": 3_600,
+                    "items": [],
+                }
+            ],
+        }
+
+        class FakeClient:
+            title = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read_thread(self, _session_id, include_turns=False):
+                self.assert_include_turns = include_turns
+                return fake_thread
+
+            def set_thread_title(self, _session_id, title):
+                FakeClient.title = title
+
+        with tempfile.TemporaryDirectory() as data_dir:
+            stale_state = HOOK.fresh_state()
+            stale_state["active_turn_id"] = "abandoned-turn"
+            stale_state["turn_started_at"] = 100.0
+            state_path = Path(data_dir) / "01a0bc5c-260a-7842-b3ef-5bb8519f2e8f.json"
+            state_path.write_text(json.dumps(stale_state), encoding="utf-8")
+            with patch.dict(os.environ, {"CODEX_PR_TITLE_HOOK_DATA": data_dir}), patch.object(
+                HOOK, "AppServerClient", FakeClient
+            ):
+                HOOK.handle_event(
+                    {
+                        "session_id": "01a0bc5c-260a-7842-b3ef-5bb8519f2e8f",
+                        "hook_event_name": "SessionStart",
+                    },
+                    now=4_000,
+                )
+            state = json.loads(state_path.read_text())
+        self.assertEqual(state["active_seconds"], 3_600)
+        self.assertEqual(state["pr_urls"], [])
+        self.assertIsNone(state["active_turn_id"])
+        self.assertIsNone(state["turn_started_at"])
+        self.assertEqual(FakeClient.title, "⏱️ 旧概括")
 
 
 class HookOutputTests(unittest.TestCase):
