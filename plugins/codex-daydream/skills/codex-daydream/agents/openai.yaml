@@ -1,6 +1,6 @@
 interface:
   display_name: "Codex Daydream"
   short_description: "把当天 Codex 工作化成保护隐私的卡通海报提示词"
-  default_prompt: "Use $codex-daydream to turn my work since the last checkpoint into a privacy-safe cartoon poster prompt."
+  default_prompt: "Use $codex-daydream to turn my latest continuous Codex work period into a recognizable cartoon poster prompt."
 policy:
   allow_implicit_invocation: true

@@ -1,15 +1,15 @@
 {
   "name": "codex-daydream",
-  "version": "0.1.0+codex.20260922122108",
-  "description": "Turn recent Codex work into a privacy-preserving daily cartoon poster with a clear identity panel.",
+  "version": "0.1.0+codex.20260923034830",
+  "description": "Turn a continuous Codex work period into a project-aware cartoon poster prompt.",
   "author": {
     "name": "Xingyu Wang"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex Daydream",
-    "shortDescription": "Make a private cartoon poster from today's work.",
-    "longDescription": "Read a bounded, locally sanitized slice of today's Codex tasks, turn recognizable work themes into playful visual metaphors, and produce a copy-ready poster prompt with an explicit Codex-day title plus a dedicated creator, date, source, and repository panel.",
+    "shortDescription": "Make a project-aware cartoon poster from a work period.",
+    "longDescription": "Read a bounded continuous period of Codex work, even across midnight, and produce a user-guided cartoon poster prompt showing project purposes, work focus, and supported outcomes, with a dedicated creator, date, source, and repository panel.",
     "developerName": "Xingyu Wang",
     "category": "Productivity",
     "capabilities": [
@@ -17,6 +17,6 @@
       "Privacy abstraction",
       "Poster prompts"
     ],
-    "defaultPrompt": "\u628a\u6211\u4ece\u4e0a\u6b21\u603b\u7ed3\u4ee5\u6765\u7684 Codex \u5de5\u4f5c\u53d8\u6210\u4e00\u5f20\u4fdd\u62a4\u9690\u79c1\u7684\u5361\u901a\u6d77\u62a5\u63d0\u793a\u8bcd\u3002"
+    "defaultPrompt": "\u628a\u6700\u8fd1\u8fd9\u6bb5\u8fde\u7eed\u7684 Codex \u5de5\u4f5c\u53d8\u6210\u4e00\u5f20\u80fd\u770b\u51fa\u9879\u76ee\u4e0e\u6210\u679c\u7684\u5361\u901a\u6d77\u62a5\u63d0\u793a\u8bcd\u3002"
   }
 }

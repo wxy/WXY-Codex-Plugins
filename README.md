@@ -11,7 +11,7 @@ A single development home and repository marketplace for Codex plugins created b
 
 | Plugin · 插件 | Status · 状态 | What it does · 用途 |
 | --- | --- | --- |
-| [Codex Daydream](plugins/codex-daydream/README.md) | Available<br>可安装 | Turns work since the previous checkpoint into a concrete, privacy-preserving cartoon-poster prompt.<br>把上次检查点以来的工作转化成具体但保护隐私的卡通海报提示词。 |
+| [Codex Daydream](plugins/codex-daydream/README.md) | Available<br>可安装 | Turns a continuous work period, even across midnight, into a cartoon poster showing projects, focus, and supported results.<br>把一段连续工作（包括跨午夜）转化成展示项目、重点与有依据成果的卡通海报。 |
 | [Codex PR Title Hook](plugins/codex-pr-title-hook/README.md) | Available<br>可安装 | Keeps Codex task titles aligned with attached pull requests and compact workflow signals.<br>根据附加的 PR 与工作信号维护 Codex 任务标题。 |
 
 <p align="center"><img src="assets/readme/section-install.svg" width="100%" alt="Install 安装"></p>
@@ -91,9 +91,9 @@ Do not install without the user's request.
 
     > **本地数据源。** Daydream 只读本地、受限范围的 Codex 会话数据，不建立另一份聊天记录数据库。
 
-- **Shareable abstraction.** Poster prompts preserve recognizable work categories while removing project names, paths, code, credentials, identifiers, and exact operational details.
+- **Shareable specificity.** Poster prompts show project purposes, work, and supported outcomes. Real names and visual assets are used when supplied or approved by the user, or clearly public-facing; paths, code, credentials, and private identifiers stay out of the poster.
 
-    > **可分享的抽象。** 海报保留可识别的工作类型，但移除项目名、路径、代码、凭证、标识符和精确操作细节。
+    > **可分享的具体内容。** 海报说明项目用途、实际工作与有依据的成果。用户提供、许可或明确公开的名称和视觉素材可以使用；路径、代码、凭证和私有标识符不会放入海报。
 
 - **Authorization remains explicit.** Repository text or poster text helps an AI discover installation instructions; it does not authorize installation by itself.
 
