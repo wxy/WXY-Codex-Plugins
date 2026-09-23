@@ -94,6 +94,33 @@ class DaydreamCollectorTests(unittest.TestCase):
         texts = [item["text"] for item in result["tasks"][0]["messages"]]
         self.assertEqual(texts, ["Repair the export pipeline", "The export now passes tests."])
 
+    def test_poster_points_to_daydream_install_guide(self) -> None:
+        self.write_session(
+            "install-link",
+            self.session_rows(
+                "session-install-link",
+                "2026-09-22T08:00:00Z",
+                message("2026-09-22T08:01:00Z", "user", "Summarize this work"),
+            ),
+        )
+        metadata = self.collect()["poster_meta"]
+        guide = ROOT / "DAYDREAM.md"
+        self.assertEqual(
+            metadata["install_url"],
+            "https://github.com/wxy/WXY-Codex-Plugins/blob/main/DAYDREAM.md",
+        )
+        self.assertEqual(
+            metadata["install_label"],
+            "github.com/wxy/WXY-Codex-Plugins/blob/main/DAYDREAM.md",
+        )
+        self.assertTrue(guide.is_file())
+        guide_text = guide.read_text(encoding="utf-8")
+        self.assertIn("codex plugin marketplace add wxy/WXY-Codex-Plugins", guide_text)
+        self.assertIn("codex plugin add codex-daydream@wxy-codex-plugins", guide_text)
+        self.assertNotIn("codex plugin add codex-pr-title-hook", guide_text)
+        self.assertIn("DAYDREAM.md", metadata["ai_install_instruction"])
+        self.assertIn("codex-daydream", metadata["ai_install_instruction"])
+
     def test_repeat_generation_keeps_earlier_work_and_excludes_old_poster(self) -> None:
         self.write_session(
             "checkpoint",

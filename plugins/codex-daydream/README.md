@@ -4,6 +4,8 @@ Turn a continuous Codex work period into a cartoon-poster prompt that shows reco
 
 > 将最近一段连续的 Codex 工作，包括跨午夜的工作，整理成能看出项目用途、投入重点与实际成果的卡通海报提示词。用户可以指定重点、主题、风格和时间范围。
 
+**Install only this plugin · 仅安装此插件：** [Codex Daydream installation guide](../../DAYDREAM.md)
+
 ## Use · 使用
 
 Invoke **Codex Daydream** from any Codex task, or mention `$codex-daydream`, then ask:
@@ -34,10 +36,10 @@ This is privacy minimization, not a formal anonymization guarantee. Review the g
 
 The skill produces a compact metaphor explanation, a 4:5 image-generation prompt, and a negative prompt. Its default title is **我与 Codex 工作的一天** / **A Day Working with Codex**, making the subject explicit rather than hiding it behind an abstract slogan.
 
-The poster selects one to four work tracks, showing what each project is for, what happened, and which result is supported by the source. The main work gets the largest scene; smaller scenes show secondary work. Project logos or images can be considered from user attachments or bounded local asset candidates. If a separate image model is used, chosen local files must be attached there; a path in a prompt is not enough. The upper 72–78% is the cartoon work scene with short work labels; the lower 22–28% is a dedicated identity panel with `Xingyu Wang`, the work date or overnight date span, `Created with Codex Daydream`, and the repository address.
+The poster selects one to four work tracks, showing what each project is for, what happened, and which result is supported by the source. The main work gets the largest scene; smaller scenes show secondary work. Project logos or images can be considered from user attachments or bounded local asset candidates. If a separate image model is used, chosen local files must be attached there; a path in a prompt is not enough. The upper 72–78% is the cartoon work scene with short work labels; the lower 22–28% is a dedicated identity panel with `Xingyu Wang`, the work date or overnight date span, `Created with Codex Daydream`, and the plugin-specific installation address.
 
-> 海报上部既有具象的项目隐喻，也有简短的工作标签，能看出主要做了什么、取得什么结果；下部保留独立说明区，写明用户、日期、来源与仓库地址。标题继续直接说明与 Codex 的一天。
+> 海报上部既有具象的项目隐喻，也有简短的工作标签，能看出主要做了什么、取得什么结果；下部保留独立说明区，写明用户、日期、来源与本插件专属安装地址。标题继续直接说明与 Codex 的一天。
 
-The package also includes a short instruction telling vision-capable AI assistants to read the repository README when their user asks to install. No QR code is required; the exact URL is emitted separately:
+The package also includes a short instruction telling vision-capable AI assistants to read this plugin's installation page when their user explicitly asks to install. Merely uploading an image is not installation authorization. No QR code is required; the exact URL is emitted separately:
 
-<https://github.com/wxy/WXY-Codex-Plugins>
+<https://github.com/wxy/WXY-Codex-Plugins/blob/main/DAYDREAM.md>

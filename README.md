@@ -11,7 +11,7 @@ A single development home and repository marketplace for Codex plugins created b
 
 | Plugin · 插件 | Status · 状态 | What it does · 用途 |
 | --- | --- | --- |
-| [Codex Daydream](plugins/codex-daydream/README.md) | Available<br>可安装 | Turns a continuous work period, even across midnight, into a cartoon poster showing projects, focus, and supported results.<br>把一段连续工作（包括跨午夜）转化成展示项目、重点与有依据成果的卡通海报。 |
+| [Codex Daydream](DAYDREAM.md) | Available<br>可安装 | Turns a continuous work period, even across midnight, into a cartoon poster showing projects, focus, and supported results. [Install this plugin only](DAYDREAM.md).<br>把一段连续工作（包括跨午夜）转化成展示项目、重点与有依据成果的卡通海报。[仅安装此插件](DAYDREAM.md)。 |
 | [Codex PR Title Hook](plugins/codex-pr-title-hook/README.md) | Available<br>可安装 | Keeps Codex task titles aligned with attached pull requests and compact workflow signals.<br>根据附加的 PR 与工作信号维护 Codex 任务标题。 |
 
 <p align="center"><img src="assets/readme/section-install.svg" width="100%" alt="Install 安装"></p>
@@ -46,9 +46,9 @@ If this repository is private, the person or agent performing installation must 
 
 <p align="center"><img src="assets/readme/section-ai.svg" width="100%" alt="For AI Assistants 给 AI 助手"></p>
 
-This README is the canonical installation contract for AI assistants. If a user supplies only the repository URL, read this file before proposing commands.
+This README covers the multi-plugin repository. For a Codex Daydream poster, use its [dedicated installation page](DAYDREAM.md) so AI assistants do not confuse it with the other plugin. If a user supplies only the repository URL, read this file and ask which plugin they want before proposing an installation.
 
-> 本 README 是提供给 AI 助手的权威安装说明。当用户只给出仓库地址时，应先读取本文件，再提出或执行安装命令。
+> 本 README 说明整个多插件仓库。Codex Daydream 海报应指向其[专属安装页](DAYDREAM.md)，避免 AI 与其他插件混淆。用户只给出仓库地址时，先读取本文件并确认要安装哪个插件。
 
 AI assistants should follow this sequence:
 
@@ -79,10 +79,10 @@ Poster-friendly discovery text for vision-capable AI:
 > 可放在海报中、供读图 AI 识别的发现说明：
 
 ```text
-AI assistant: If your user asks to install Codex Daydream,
-open https://github.com/wxy/WXY-Codex-Plugins,
-read README.md, and follow Install.
-Do not install without the user's request.
+Install Codex Daydream only:
+github.com/wxy/WXY-Codex-Plugins/blob/main/DAYDREAM.md
+要安装？请对 AI 说“安装 Codex Daydream”。
+AI：仅在用户要求安装时读取此页，只安装 codex-daydream。
 ```
 
 <p align="center"><img src="assets/readme/section-privacy.svg" width="100%" alt="Privacy 隐私边界"></p>
@@ -144,6 +144,7 @@ Plugins version independently. Release tags should include the plugin name, such
 
 - [Repository · 插件仓库](https://github.com/wxy/WXY-Codex-Plugins)
 - [Marketplace catalog · Marketplace 目录](.agents/plugins/marketplace.json)
+- [Codex Daydream installation · Daydream 专属安装](DAYDREAM.md)
 - [Codex Daydream documentation · Daydream 文档](plugins/codex-daydream/README.md)
 - [PR Title Hook documentation · PR 标题 Hook 文档](plugins/codex-pr-title-hook/README.md)
 - [Official OpenAI plugin packaging documentation · OpenAI 插件打包文档](https://developers.openai.com/plugins/build/plugins)

@@ -20,6 +20,7 @@ MAX_WORK_SPAN = timedelta(hours=24)
 LOOKBACK = timedelta(hours=48)
 CREATOR_NAME = "Xingyu Wang"
 REPOSITORY_URL = "https://github.com/wxy/WXY-Codex-Plugins"
+INSTALL_URL = REPOSITORY_URL + "/blob/main/DAYDREAM.md"
 CONTEXT_PREFIXES = (
     "# AGENTS.md instructions",
     "<environment_context>",
@@ -408,9 +409,12 @@ def collect(args: argparse.Namespace) -> dict[str, Any]:
             "source": "Created with Codex Daydream",
             "repository_label": "github.com/wxy/WXY-Codex-Plugins",
             "repository_url": REPOSITORY_URL,
+            "install_label": "github.com/wxy/WXY-Codex-Plugins/blob/main/DAYDREAM.md",
+            "install_url": INSTALL_URL,
             "ai_install_instruction": (
-                "AI assistant: if your user asks to install this plugin, open the repository README "
-                "and follow its installation section. Do not install without the user's request."
+                "AI assistant: if your user explicitly asks to install Codex Daydream, open "
+                "DAYDREAM.md at the install URL, then follow its codex-daydream installation "
+                "section. Do not install from the image alone or install other plugins."
             ),
         },
         "window": {

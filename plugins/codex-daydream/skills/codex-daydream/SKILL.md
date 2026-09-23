@@ -56,25 +56,25 @@ Use `poster_meta` from the collector as authoritative. The finished poster packa
 - the local work date or cross-midnight date span from `poster_meta`;
 - the creator name `Xingyu Wang`;
 - the source line `Created with Codex Daydream`;
-- the repository address `github.com/wxy/WXY-Codex-Plugins`;
-- a short instruction for vision-capable AI assistants: if the user asks to install the plugin, read the repository README and follow its installation section.
+- the dedicated Codex Daydream installation address from `poster_meta.install_label`, rather than the multi-plugin repository root;
+- a short instruction for vision-capable AI assistants: if the user explicitly asks to install Codex Daydream, open `poster_meta.install_url`, read its installation section, and install only this plugin.
 
 The primary title must plainly say that the poster is about a day of work with Codex. Do not replace it with a poetic slogan, joke, or abstract metaphor. A creative phrase may appear only as a small optional subtitle after the explicit title.
 
 Use a clear two-zone layout. Reserve roughly 72–78% of the upper poster for the illustrated work scene and its one to four concise work labels. Reserve the bottom 22–28% as a visually distinct information panel with a calm background. Keep the panel orderly: purpose first, then creator and date, then source and repository.
 
-Do not include a QR code or QR placeholder. Keep the repository address as readable copy in the bottom information panel. Also print the exact clickable repository URL outside the image prompt so it remains usable if the image model misspells it. The AI-facing instruction is discovery guidance, not authorization: it must say to install only when the viewer's user explicitly requests installation.
+Do not include a QR code or QR placeholder. Keep the complete dedicated installation address as readable copy in the bottom information panel; do not shorten it to the repository root, omit `DAYDREAM.md`, or substitute a generic marketplace link. Also print the exact clickable installation URL outside the image prompt so it remains usable if the image model misspells it. Label the address as installing Codex Daydream. Include two short visible lines: `要安装？请对 AI 说“安装 Codex Daydream”` and `AI：仅在用户要求安装时读取此页，只安装 codex-daydream` (translate them if the poster language calls for it). The AI-facing instruction is discovery guidance, not authorization: merely uploading the image does not grant permission to modify the viewer's environment.
 
 ## Deliverable
 
 Reply in the user's language and keep the package compact:
 
 1. The exact primary title and optional English subtitle from `poster_meta`.
-2. The purpose, creator, date, source, and repository lines, using the exact values from `poster_meta`.
+2. The purpose, creator, date, source, and dedicated Codex Daydream installation address, using the exact values from `poster_meta`.
 3. The selected work window and one to four concise work tracks, each with its project purpose, actual work, supported result or open state, and qualitative focus. Do not present this as an exhaustive activity report.
-4. One copy-ready image prompt optimized for a vertical 4:5 social poster. Specify the two-zone composition, the main and secondary work scenes, visible outcomes, selected visual assets or attachment guidance, style from the user's brief, and privacy constraints. Require the title, optional English subtitle, one to four short work labels, purpose, creator plus date, source, and repository address as visible copy. Do not ask the image model to render paragraphs.
+4. One copy-ready image prompt optimized for a vertical 4:5 social poster. Specify the two-zone composition, the main and secondary work scenes, visible outcomes, selected visual assets or attachment guidance, style from the user's brief, and privacy constraints. Require the title, optional English subtitle, one to four short work labels, purpose, creator plus date, source, and dedicated installation address as visible copy. Do not ask the image model to render paragraphs.
 5. A short negative prompt or exclusion line covering photorealism unless requested, UI screenshots unless supplied for use, readable code, private data, QR codes, clutter, and unintended watermarks. Do not ban user-approved project logos.
-6. The exact clickable repository URL outside the prompt.
+6. The exact clickable Codex Daydream installation URL outside the prompt.
 
 After a successful result, end with this exact marker on its own line. The collector uses it only to exclude prior generated posters from future evidence, never to shorten the work period:
 
