@@ -1,6 +1,6 @@
 {
   "name": "codex-daydream",
-  "version": "0.1.0+codex.20260923131418",
+  "version": "0.1.0+codex.20260923133500",
   "description": "Turn a continuous Codex work period into a project-aware cartoon poster prompt.",
   "author": {
     "name": "Xingyu Wang"
@@ -17,6 +17,6 @@
       "Privacy abstraction",
       "Poster prompts"
     ],
-    "defaultPrompt": "\u628a\u6700\u8fd1\u8fd9\u6bb5\u8fde\u7eed\u7684 Codex \u5de5\u4f5c\u53d8\u6210\u4e00\u5f20\u80fd\u770b\u51fa\u9879\u76ee\u4e0e\u6210\u679c\u7684\u5361\u901a\u6d77\u62a5\u63d0\u793a\u8bcd\u3002"
+    "defaultPrompt": "Create a Codex Daydream poster for my latest work period. Use my conversation language unless I specify another poster language."
   }
 }

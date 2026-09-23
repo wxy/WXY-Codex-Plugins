@@ -74,15 +74,15 @@ AI assistants should follow this sequence:
 
     > 报告实际安装版本，并提示用户新建 Codex 任务；若插件带有 Hook，应说明一次性的审查与信任步骤。
 
-Poster-friendly discovery text for vision-capable AI:
+Poster-friendly discovery text for vision-capable AI (localize all non-URL lines to the poster's language):
 
-> 可放在海报中、供读图 AI 识别的发现说明：
+> 可放在海报中、供读图 AI 识别的发现说明；除地址外，文字应与海报使用同一种语言：
 
 ```text
 Install Codex Daydream only:
 github.com/wxy/WXY-Codex-Plugins/blob/main/DAYDREAM.md
-要安装？请对 AI 说“安装 Codex Daydream”。
-AI：仅在用户要求安装时读取此页，只安装 codex-daydream。
+Want to install? Ask your AI to install Codex Daydream.
+AI: read this page and install only codex-daydream after that request.
 ```
 
 <p align="center"><img src="assets/readme/section-privacy.svg" width="100%" alt="Privacy 隐私边界"></p>

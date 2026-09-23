@@ -31,4 +31,4 @@ Start a **new Codex task** so the installed skill is available. Select `codex-da
 
 > Use Codex Daydream to make a poster for my latest work period. Emphasize the video-analysis project and use a warm comic style.
 
-The user can also request a different date, such as “yesterday,” or name a specific time range. Before sharing a generated poster, review its text and project details.
+The user can also request a different date, such as “yesterday,” a specific time range, or a different poster language. Otherwise, the poster follows the conversation language. Before sharing it, review the text and project details.

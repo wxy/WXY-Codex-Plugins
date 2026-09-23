@@ -34,9 +34,13 @@ This is privacy minimization, not a formal anonymization guarantee. Review the g
 
 ## Output · 输出
 
-The skill produces a compact metaphor explanation, a 4:5 image-generation prompt, and a negative prompt. Its default title is **我与 Codex 工作的一天** / **A Day Working with Codex**, making the subject explicit rather than hiding it behind an abstract slogan.
+The skill produces a compact metaphor explanation, a 4:5 image-generation prompt, and a negative prompt. The main title explicitly means **A Day Working with Codex**, localized to the poster's language rather than hidden behind an abstract slogan.
 
-The poster selects one to four work tracks, showing what each project is for, what happened, and which result is supported by the source. The main work gets the largest scene; smaller scenes show secondary work. Project logos or images can be considered from user attachments or bounded local asset candidates. If a separate image model is used, chosen local files must be attached there; a path in a prompt is not enough. The upper 72–78% is the cartoon work scene with short work labels; the lower 22–28% is a dedicated identity panel with `Xingyu Wang`, the work date or overnight date span, `Created with Codex Daydream`, and the plugin-specific installation address.
+Poster text follows the language of the user's current conversation by default. A language explicitly requested for the poster overrides that default. Titles, work labels, attribution, and installation guidance are localized; proper names, dates, plugin IDs, and the installation URL remain unchanged.
+
+> 海报文字默认使用当前对话的语言；用户明确指定海报语言时，以指定语言为准。标题、工作标签、来源说明和安装提示会相应翻译，专有名称、日期、插件标识及安装地址保持原样。
+
+The poster selects one to four work tracks, showing what each project is for, what happened, and which result is supported by the source. The main work gets the largest scene; smaller scenes show secondary work. Project logos or images can be considered from user attachments or bounded local asset candidates. If a separate image model is used, chosen local files must be attached there; a path in a prompt is not enough. The upper 72–78% is the cartoon work scene with short work labels; the lower 22–28% is a dedicated identity panel with `Xingyu Wang`, the work date or overnight date span, localized Codex Daydream attribution, and the plugin-specific installation address.
 
 > 海报上部既有具象的项目隐喻，也有简短的工作标签，能看出主要做了什么、取得什么结果；下部保留独立说明区，写明用户、日期、来源与本插件专属安装地址。标题继续直接说明与 Codex 的一天。
 
