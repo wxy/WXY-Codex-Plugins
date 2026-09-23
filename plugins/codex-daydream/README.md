@@ -16,6 +16,10 @@ Every invocation freshly summarizes the full latest continuous work period acros
 
 > 每次调用都会重新汇总最近一段完整工作；跨午夜仍可属于同一段。指定明确起止时间可覆盖默认范围。调用插件后补充的“突出什么、用什么风格、可以展示哪些名称或素材”等语句，都会用于这次创作。
 
+You can also ask for “yesterday's poster.” The plugin selects work periods that **began yesterday in your local timezone**, including work that ran into today's early hours. If you mean exactly midnight to midnight, specify that exact calendar interval.
+
+> 也可以说“生成昨天的海报”。插件会选取**当地昨天开始的工作段**，包括延续到今天凌晨的工作。若需要严格按自然日零点切分，请明确指定该时间段。
+
 ## Privacy model · 隐私模型
 
 - Source sessions are read locally and never modified.

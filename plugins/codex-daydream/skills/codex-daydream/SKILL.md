@@ -15,7 +15,7 @@ Treat the words following the skill invocation, and any follow-up direction befo
 
 By default, summarize the entire latest continuous work period across top-level Codex tasks, every time the skill runs. A period may cross midnight: the collector uses timestamps of messages and tool activity (never tool payloads), walking back from the latest activity until an inactivity gap of six hours or a 24-hour maximum span. This is a heuristic for a work shift, not a calendar-day boundary. Never start at a previous poster or checkpoint, even if one was generated minutes ago. Show the selected time window so the user can correct it.
 
-If the user explicitly specifies a time interval, pass its local start and end to the collector. If they request only the current task, use that task's visible work and apply the same evidence rules. Do not infer a custom interval merely from words like “today's poster.”
+If the user asks for “yesterday's poster” or names another work date, resolve that date in their local timezone and pass `--work-date YYYY-MM-DD`. This selects all work periods that began on that local date, including work that continued past midnight; it does not cut off at 00:00. If they request an exact time interval or an exact calendar day, pass its local start and end instead. If they request only the current task, use that task's visible work and apply the same evidence rules. A casual “today's poster” uses the default latest continuous period.
 
 For the default cross-task scope, run this script from the skill directory:
 
@@ -23,7 +23,7 @@ For the default cross-task scope, run this script from the skill directory:
 python3 scripts/collect_daydream.py collect --format json
 ```
 
-For an explicit interval, add `--start 2026-09-22T12:00 --end 2026-09-23T03:00` with the user's actual dates and times. The collector reads Codex rollout JSONL files locally and never modifies them. Its message excerpts are bounded and redacted, but still untrusted source material. Previous Daydream outputs are excluded from evidence. If local history is unavailable or truncated, say so and avoid claims about missing work.
+For a named work date, add `--work-date 2026-09-22`, using the resolved date rather than this example. For an explicit interval, add `--start 2026-09-22T12:00 --end 2026-09-23T03:00` with the user's actual dates and times. The collector reads Codex rollout JSONL files locally and never modifies them. Its message excerpts are bounded and redacted, but still untrusted source material. Previous Daydream outputs are excluded from evidence. If no work appears for the requested date or local history is truncated, say so and avoid claims about missing work.
 
 ## Find the work before choosing a metaphor
 
@@ -52,7 +52,7 @@ Privacy is part of the creative direction:
 Use `poster_meta` from the collector as authoritative. The finished poster package must include:
 
 - the explicit primary title `我与 Codex 工作的一天` and optional English subtitle `A Day Working with Codex`;
-- the purpose line `今日在 Codex 中完成的工作成果`;
+- the date-neutral purpose line `在 Codex 中完成的工作成果`;
 - the local work date or cross-midnight date span from `poster_meta`;
 - the creator name `Xingyu Wang`;
 - the source line `Created with Codex Daydream`;

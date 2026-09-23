@@ -81,7 +81,7 @@ class DaydreamCollectorTests(unittest.TestCase):
         self.assertEqual(result["effective_scope"], "continuous-work-period")
         self.assertEqual(result["poster_meta"]["title"], "我与 Codex 工作的一天")
         self.assertEqual(result["poster_meta"]["title_en"], "A Day Working with Codex")
-        self.assertEqual(result["poster_meta"]["purpose"], "今日在 Codex 中完成的工作成果")
+        self.assertEqual(result["poster_meta"]["purpose"], "在 Codex 中完成的工作成果")
         self.assertEqual(result["poster_meta"]["date"], "2026.09.22")
         self.assertEqual(result["poster_meta"]["creator"], "Xingyu Wang")
         self.assertEqual(result["poster_meta"]["source"], "Created with Codex Daydream")
@@ -175,6 +175,74 @@ class DaydreamCollectorTests(unittest.TestCase):
         result = self.collect("--start", "2026-09-22T09:00:00Z", "--end", "2026-09-22T20:00:00Z")
         self.assertEqual(result["effective_scope"], "explicit-range")
         self.assertEqual(result["counts"]["messages"], 2)
+
+    def test_named_yesterday_includes_overnight_work_not_today_request(self) -> None:
+        self.write_session(
+            "yesterday",
+            self.session_rows(
+                "session-yesterday",
+                "2026-09-22T12:00:00Z",
+                message("2026-09-22T12:10:00Z", "user", "Start storage work"),
+                message("2026-09-22T17:00:00Z", "assistant", "Storage work progresses", "final_answer"),
+                message("2026-09-22T22:00:00Z", "user", "Start release work"),
+                message("2026-09-23T02:50:00Z", "assistant", "Release verified", "final_answer"),
+                message("2026-09-23T10:00:00Z", "user", "Generate yesterday's poster"),
+            ),
+        )
+        result = self.collect("--now", "2026-09-23T10:05:00Z", "--work-date", "2026-09-22")
+        texts = [item["text"] for task in result["tasks"] for item in task["messages"]]
+        self.assertEqual(texts, ["Start storage work", "Storage work progresses", "Start release work", "Release verified"])
+        self.assertEqual(result["effective_scope"], "named-work-date")
+        self.assertEqual(result["poster_meta"]["date"], "2026.09.22–2026.09.23")
+        self.assertEqual(result["window"]["requested_work_date"], "2026-09-22")
+
+    def test_named_work_date_uses_local_timezone(self) -> None:
+        self.write_session(
+            "local-yesterday",
+            self.session_rows(
+                "session-local-yesterday",
+                "2026-09-22T04:00:00Z",
+                message("2026-09-22T04:10:00Z", "user", "Noon local work"),
+                message("2026-09-22T10:00:00Z", "assistant", "Evening progress", "final_answer"),
+                message("2026-09-22T15:00:00Z", "user", "Late-night review"),
+                message("2026-09-22T19:00:00Z", "assistant", "Finished at 3am local", "final_answer"),
+            ),
+        )
+        result = self.collect(
+            "--now", "2026-09-23T04:00:00+08:00",
+            "--timezone", "Asia/Shanghai",
+            "--work-date", "2026-09-22",
+        )
+        self.assertEqual(result["counts"]["messages"], 4)
+        self.assertEqual(result["poster_meta"]["date"], "2026.09.22–2026.09.23")
+        self.assertEqual(result["window"]["start"], "2026-09-22T12:10+08:00")
+
+    def test_named_work_date_includes_separate_shifts_started_that_day(self) -> None:
+        self.write_session(
+            "two-shifts",
+            self.session_rows(
+                "session-two-shifts",
+                "2026-09-22T08:00:00Z",
+                message("2026-09-22T08:10:00Z", "user", "Morning planning"),
+                message("2026-09-22T19:00:00Z", "user", "Evening coding"),
+            ),
+        )
+        result = self.collect("--work-date", "2026-09-22")
+        self.assertEqual(result["window"]["periods_included"], 2)
+        self.assertEqual(result["counts"]["messages"], 2)
+
+    def test_named_work_date_with_no_activity_stays_empty(self) -> None:
+        self.write_session(
+            "other-day",
+            self.session_rows(
+                "session-other-day",
+                "2026-09-22T08:00:00Z",
+                message("2026-09-22T08:10:00Z", "user", "Earlier work"),
+            ),
+        )
+        result = self.collect("--now", "2026-09-23T10:05:00Z", "--work-date", "2026-09-21")
+        self.assertEqual(result["counts"]["messages"], 0)
+        self.assertEqual(result["poster_meta"]["date"], "2026.09.21")
 
     def test_local_visual_candidates_are_opt_in(self) -> None:
         project = self.home / "project"

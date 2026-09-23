@@ -8,7 +8,7 @@ import json
 import os
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -241,14 +241,18 @@ def local_datetime(value: str, tz) -> datetime:
     return (parsed.replace(tzinfo=tz) if parsed.tzinfo is None else parsed).astimezone(tz)
 
 
-def continuous_window(timestamps: list[datetime]) -> tuple[datetime, datetime]:
-    end = timestamps[-1]
-    start = end
-    for earlier in reversed(timestamps[:-1]):
-        if start - earlier >= WORK_GAP or end - earlier > MAX_WORK_SPAN:
-            break
-        start = earlier
-    return start, end
+def work_periods(timestamps: list[datetime]) -> list[tuple[datetime, datetime]]:
+    if not timestamps:
+        return []
+    periods: list[tuple[datetime, datetime]] = []
+    start = previous = timestamps[0]
+    for stamp in timestamps[1:]:
+        if stamp - previous >= WORK_GAP or stamp - start > MAX_WORK_SPAN:
+            periods.append((start, previous))
+            start = stamp
+        previous = stamp
+    periods.append((start, previous))
+    return periods
 
 
 def local_project_sources(sessions: list[Session], aliases: dict[str, str]) -> list[dict[str, Any]]:
@@ -288,14 +292,21 @@ def local_project_sources(sessions: list[Session], aliases: dict[str, str]) -> l
 def collect(args: argparse.Namespace) -> dict[str, Any]:
     tz = parse_timezone(args.timezone)
     now = local_datetime(args.now, tz) if args.now else datetime.now(tz)
+    if args.work_date and (args.start or args.end):
+        raise SystemExit("--work-date cannot be combined with --start or --end")
     if bool(args.start) != bool(args.end):
         raise SystemExit("--start and --end must be supplied together")
     explicit_start = local_datetime(args.start, tz) if args.start else None
     explicit_end = local_datetime(args.end, tz) if args.end else None
     if explicit_start and explicit_end and explicit_start >= explicit_end:
         raise SystemExit("--start must be before --end")
-    cutoff = explicit_end or now
-    floor = explicit_start or cutoff - LOOKBACK
+    try:
+        work_date = date.fromisoformat(args.work_date) if args.work_date else None
+    except ValueError as exc:
+        raise SystemExit(f"invalid work date: {args.work_date}") from exc
+    date_start = datetime.combine(work_date, time.min, tzinfo=tz) if work_date else None
+    cutoff = explicit_end or (min(now, date_start + timedelta(days=2)) if date_start else now)
+    floor = explicit_start or (date_start - timedelta(days=1) if date_start else cutoff - LOOKBACK)
 
     parsed = [
         item
@@ -309,17 +320,27 @@ def collect(args: argparse.Namespace) -> dict[str, Any]:
         for timestamp in item.activity_times
         if floor <= timestamp.astimezone(tz) <= cutoff
     )
-    window_start, last_activity = (
-        (explicit_start, activity[-1] if activity else explicit_start)
-        if explicit_start else continuous_window(activity) if activity else (cutoff, cutoff)
-    )
+    periods = work_periods(activity)
+    selected_periods = [period for period in periods if period[0].date() == work_date] if work_date else periods[-1:]
+    if explicit_start:
+        window_start, last_activity = explicit_start, activity[-1] if activity else explicit_start
+    elif selected_periods:
+        window_start, last_activity = selected_periods[0][0], selected_periods[-1][1]
+    else:
+        window_start = last_activity = date_start or cutoff
+
+    def in_window(timestamp: datetime) -> bool:
+        local = timestamp.astimezone(tz)
+        if explicit_start:
+            return explicit_start <= local <= cutoff
+        return any(start <= local <= end for start, end in selected_periods)
 
     selected: list[Session] = []
     for item in top_level:
         messages = [
             message
             for message in item.messages
-            if window_start <= message.timestamp.astimezone(tz) <= cutoff
+            if in_window(message.timestamp)
         ]
         if args.session_id and not item.session_id.startswith(args.session_id):
             continue
@@ -370,18 +391,18 @@ def collect(args: argparse.Namespace) -> dict[str, Any]:
                 }
             )
 
-    date_label = window_start.strftime("%Y.%m.%d")
+    date_label = (date_start or window_start).strftime("%Y.%m.%d")
     if window_start.date() != last_activity.date():
         date_label += "–" + last_activity.strftime("%Y.%m.%d")
     result = {
         "schema_version": 1,
-        "effective_scope": "explicit-range" if explicit_start else "continuous-work-period",
+        "effective_scope": "explicit-range" if explicit_start else "named-work-date" if work_date else "continuous-work-period",
         "local_date": last_activity.date().isoformat(),
         "timezone": str(tz),
         "poster_meta": {
             "title": "我与 Codex 工作的一天",
             "title_en": "A Day Working with Codex",
-            "purpose": "今日在 Codex 中完成的工作成果",
+            "purpose": "在 Codex 中完成的工作成果",
             "date": date_label,
             "creator": CREATOR_NAME,
             "source": "Created with Codex Daydream",
@@ -397,6 +418,8 @@ def collect(args: argparse.Namespace) -> dict[str, Any]:
             "end": (cutoff if explicit_start else last_activity).isoformat(timespec="minutes"),
             "generated_at": now.isoformat(timespec="minutes"),
             "last_activity": last_activity.isoformat(timespec="minutes"),
+            "requested_work_date": work_date.isoformat() if work_date else None,
+            "periods_included": len(selected_periods) if not explicit_start else None,
             "idle_gap_hours": int(WORK_GAP.total_seconds() // 3600),
         },
         "privacy": {
@@ -428,6 +451,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
     command = subparsers.add_parser("collect", help="Collect sanitized work signals")
     command.add_argument("--now", help="Reference timestamp for deterministic collection")
+    command.add_argument("--work-date", help="Local date whose work periods should be summarized, in YYYY-MM-DD form")
     command.add_argument("--start", help="Explicit start timestamp, with optional timezone")
     command.add_argument("--end", help="Explicit end timestamp, with optional timezone")
     command.add_argument("--timezone", help="IANA timezone name, or UTC")

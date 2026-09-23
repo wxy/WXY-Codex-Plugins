@@ -1,6 +1,6 @@
 {
   "name": "codex-daydream",
-  "version": "0.1.0+codex.20260923034830",
+  "version": "0.1.0+codex.20260923041019",
   "description": "Turn a continuous Codex work period into a project-aware cartoon poster prompt.",
   "author": {
     "name": "Xingyu Wang"
