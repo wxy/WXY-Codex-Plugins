@@ -151,6 +151,17 @@ def main():
         for i in range(5):run('hook',input=json.dumps({'hook_event_name':'PreToolUse','session_id':str(i),'cwd':str(work),'tool_name':'Bash'}))
         run('tick','--rounds','20');value=run('status');assert value['event_count']==3;return value
     case('Configured global event retention is enforced',event_retention)
+    def many_roots(root,work,state,env,run):
+        roots=[]
+        for i in range(70):
+            child=work/str(i);child.mkdir();roots+=['--root',str(child)]
+            for j in range(20):(child/str(j)).write_bytes(b'X')
+        run('enable',*roots,'--no-defaults','--no-start','--notifications','inbox')
+        path=state/'config.json';raw=json.loads(path.read_text());raw['monitor']['slice_seconds']=.9;path.write_text(json.dumps(raw))
+        value=run('tick');visited=sum(r['entries_visited'] for r in value['roots'])
+        assert 600<=visited<=1000;assert any(r['finished'] for r in value['roots'])
+        return {'entries_in_one_tick':visited,'budget':1000,'root_count':70}
+    case('Many discovered roots share the full bounded slice without starving initial inventory',many_roots)
     report.update(passed=sum(c['result']=='pass' for c in cases),failed=sum(c['result']=='fail' for c in cases),environment={'python':sys.version,'platform':sys.platform})
     (out/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n');(out/'transcript.json').write_text(json.dumps(transcript,ensure_ascii=False,indent=2)+'\n');(out/'report.md').write_text('# Global edge-case E2E\n\n'+'\n'.join(c['result'].upper()+': '+c['name'] for c in cases)+'\n')
     print(json.dumps({'passed':report['passed'],'failed':report['failed'],'report':str(out/'report.json')}));return bool(report['failed'])

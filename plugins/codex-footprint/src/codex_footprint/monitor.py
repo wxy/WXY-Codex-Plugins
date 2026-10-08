@@ -301,7 +301,8 @@ class Runner:
             for key in list(self.cycles):
                 if key not in paths:self.cycles.pop(key).close()
             deadline=time.monotonic()+config['monitor']['slice_seconds']
-            count=max(1,config['monitor']['slice_entries']//max(1,len(paths)))
+            remaining=config['monitor']['slice_entries']
+            count=max(1,remaining//max(1,min(len(paths),self.max_active)))
             ordered=sorted(paths,key=lambda p:self.completed.get(p,0))
             if ordered:
                 offset=self.cursor%len(ordered);ordered=ordered[offset:]+ordered[:offset];self.cursor+=1
@@ -310,7 +311,9 @@ class Runner:
                     self.cycles[path]=Cycle(path,data,config['exclude_names'])
                 cycle=self.cycles.get(path)
                 if not cycle:continue
-                row=cycle.step(count,deadline)
+                before=cycle.row['entries_visited']
+                row=cycle.step(min(count,remaining),deadline)
+                remaining-=row['entries_visited']-before
                 row['measurement_scope']=hashlib.sha256(json.dumps({'path':path,'state':str(data),'exclude_names':exclusions,'accounting':1},sort_keys=True).encode()).hexdigest()
                 old=store.db.execute('SELECT payload FROM observations WHERE path=? ORDER BY id DESC LIMIT 1',(path,)).fetchone()
                 previous=json.loads(old[0]) if old else None
@@ -319,7 +322,7 @@ class Runner:
                 if row['finished']:
                     store.db.execute('INSERT INTO observations(path,ts,payload) VALUES(?,?,?)',(path,time.time(),json.dumps(row)))
                     issue(store,config,row,previous);self.completed[path]=time.time();self.cycles.pop(path).close()
-                if time.monotonic()>=deadline:break
+                if remaining<=0 or time.monotonic()>=deadline:break
             if time.time()-self.last_volume>=max(1,config['monitor']['interval_seconds']):
                 for row in volume_rows(paths):
                     old=store.db.execute('SELECT payload FROM volumes WHERE path=?',(row['path'],)).fetchone()
@@ -337,7 +340,7 @@ class Runner:
                     store.db.execute('INSERT INTO volume_history(ts,payload) VALUES(?,?)',(time.time(),json.dumps(row)))
                 self.last_volume=time.time()
             store.prune(config['retention']['max_snapshots'],config['retention']['max_events'])
-        return {'enabled':True,'roots':len(paths),'active_cycles':len(self.cycles)}
+        return {'enabled':True,'roots':len(paths),'active_cycles':len(self.cycles),'completed_roots':len(self.completed),'pending_roots':sum(p not in self.completed for p in paths)}
 
 
 def worker(max_ticks=None):
@@ -352,7 +355,7 @@ def worker(max_ticks=None):
             while True:
                 try:
                     result=runner.step();ticks+=1
-                    atomic(data/'worker.json',{'pid':os.getpid(),'version':__version__,'last_tick':time.time(),'last_error':None})
+                    atomic(data/'worker.json',{'pid':os.getpid(),'version':__version__,'last_tick':time.time(),'last_error':None,'progress':result})
                     if not result['enabled'] or (max_ticks and ticks>=max_ticks):break
                     time.sleep(runner.config['monitor']['interval_seconds'])
                 except Exception as exc:
@@ -373,7 +376,7 @@ def tick(rounds=1):
         try:
             for _ in range(rounds):
                 result=runner.step()
-                if result.get('active_cycles')==0:break
+                if result.get('active_cycles')==0 and result.get('pending_roots',0)==0:break
         finally:runner.close()
     return status(load())
 
