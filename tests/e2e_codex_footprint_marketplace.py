@@ -61,7 +61,8 @@ def main():
             assert installed['version']==manifest['version']
             digests={}
             for relative in ['.codex-plugin/plugin.json','.mcp.json','hooks/hooks.json','scripts/codex_footprint.py',
-                             'src/codex_footprint/observer.py','src/codex_footprint/engine.py','src/codex_footprint/service.py']:
+                             'src/codex_footprint/observer.py','src/codex_footprint/engine.py','src/codex_footprint/service.py',
+                             'src/codex_footprint/monitor.py','src/codex_footprint/global_store.py','src/codex_footprint/inventory.py','src/codex_footprint/historical.py']:
                 a=hashlib.sha256((PLUGIN/relative).read_bytes()).hexdigest()
                 b=hashlib.sha256((cache/relative).read_bytes()).hexdigest()
                 assert a==b, relative
@@ -74,6 +75,11 @@ def main():
             core=json.loads((output/'installed-e2e/report.json').read_text())
             assert core['failed']==0 and core['passed']>=19
             report['installed_core_results']={'passed':core['passed'],'failed':core['failed']}
+            for suite in ('e2e_global','e2e_global_edges'):
+                run([sys.executable,str(cache/('tests/'+suite+'.py')),'--output',str(output/suite)],timeout=90)
+                result=json.loads((output/suite/'report.json').read_text())
+                assert result['failed']==0
+                report[suite]={'passed':result['passed'],'failed':result['failed']}
             report['installation']=installed
         report['result']='pass'
     except Exception:

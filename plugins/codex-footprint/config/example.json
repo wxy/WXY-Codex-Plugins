@@ -1,13 +1,37 @@
 {
-  "version": 1,
+  "version": 2,
   "enabled": false,
-  "roots": [
-    {"id": "workspace", "path": "$CWD"},
-    {"id": "xcode-derived-data", "path": "~/Library/Developer/Xcode/DerivedData", "enabled": false},
-    {"id": "simulator", "path": "~/Library/Developer/CoreSimulator", "enabled": false}
-  ],
-  "observer": {"max_entries": 100000, "max_seconds": 2, "bucket_depth": 1, "top_files": 20},
-  "thresholds": {"large_bytes": 1073741824, "growth_bytes": 268435456, "rapid_bytes_per_second": 67108864, "many_files": 10000, "sustained_intervals": 3},
-  "retention": {"max_snapshots": 500, "max_events": 5000},
+  "discovery": true,
+  "roots": [],
+  "monitor": {
+    "interval_seconds": 2,
+    "refresh_seconds": 60,
+    "slice_entries": 1000,
+    "slice_seconds": 0.05,
+    "autostart": true
+  },
+  "notifications": {
+    "backend": "desktop",
+    "cooldown_seconds": 3600,
+    "material_growth_bytes": 268435456,
+    "minimum_free_bytes": 10737418240
+  },
+  "history": {
+    "max_files": 2000,
+    "max_records": 100000,
+    "max_seconds": 10,
+    "max_entries": 100000
+  },
+  "thresholds": {
+    "large_bytes": 1073741824,
+    "growth_bytes": 268435456,
+    "rapid_bytes_per_second": 67108864,
+    "many_files": 10000,
+    "sustained_intervals": 3
+  },
+  "retention": {
+    "max_snapshots": 500,
+    "max_events": 5000
+  },
   "exclude_names": []
 }

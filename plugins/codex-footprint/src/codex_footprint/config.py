@@ -15,7 +15,7 @@ def is_under(path, parent):
 
 
 def data_directory():
-    explicit = os.environ.get('CODEX_FOOTPRINT_DATA') or os.environ.get('PLUGIN_DATA')
+    explicit = os.environ.get('CODEX_FOOTPRINT_DATA')
     if explicit:
         return Path(explicit).expanduser().resolve()
     return Path(os.environ.get('XDG_STATE_HOME', str(Path.home()/'.local/state'))).expanduser().resolve() / 'codex-footprint'
@@ -41,6 +41,9 @@ def load_config(cwd=None):
     if config_path.stat().st_size > 1024*1024:
         raise ValueError('Configuration exceeds 1 MiB')
     raw = json.loads(config_path.read_text())
+    if isinstance(raw, dict) and raw.get('version') == 2:
+        from .monitor import normalize
+        return normalize(raw, data, config_path)
     return validate_config(raw, data, config_path, cwd)
 
 

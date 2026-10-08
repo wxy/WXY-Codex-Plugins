@@ -1,33 +1,31 @@
-# V1 scope and acceptance boundary
+# Implementation and acceptance boundary — 0.2.0
 
-The [product scope](product-scope.md) is the target definition. It requires both global monitoring/meaningful alerts after enablement and explicitly requested historical occupancy analysis, including pre-enable artifacts. Version 0.1.0 implements the foundation below; it does not complete either function.
+[Product scope](product-scope.md) remains the target contract. [Implementation plan](implementation-plan.md) orders A → B → C → D. The two functions now have a working local implementation; automated results and real host acceptance must be reported separately.
 
-## Implemented foundation
+## Implemented
 
-- Codex compatibility manifest and a WXY Codex Plugins marketplace entry, with the original independent repository preserved as initial provenance.
-- Seven lifecycle adapters, fail-open hook handling, opt-in explicit roots and bounded metadata observation.
-- SQLite history, same-scope session/turn baselines and tool-call windows.
-- Large occupancy/growth, average growth rate, many files and sustained growth signals over plugin snapshots.
-- Existing occupancy from a first scan and bounded top-file records. This does not associate pre-enable artifacts with old sessions.
-- Five local MCP tools, CLI, non-executing cleanup review plans and reproducible local ZIP packaging.
-- Black-box E2E fixtures using real files, an external writer process, packaged hook commands and MCP messages; isolated WXY installation and installed-copy verification with replayable reports.
+- Full WXY plugin manifest, unchanged seven lifecycle definitions, seven local MCP tools and reproducible ZIP.
+- One stable global config/history, lightweight spool, elected detached worker, fair resumable metadata walks and separate capacity samples.
+- Global known-development-root/workspace discovery; complete comparable baselines, worker health and next-hook recovery; disable retains history.
+- Growth/rate/file-count/large-threshold/sustained/capacity signals, durable inbox, acknowledgement, cooldown and material re-alert.
+- macOS native notification adapter with honest accepted/failed/unverified-visibility delivery state.
+- Explicit current/archived JSONL historical analysis without old snapshots; surviving occupancy, source/line evidence, recorded/candidate association, missing paths and shared/hardlink deduplication.
+- Version-1 configuration backup and untouched legacy database compatibility.
 
-## Remaining core work
+## Automated evidence
 
-- **Global monitoring:** one shared machine config/history, global discovery, volume-capacity history, fair background refresh, worker coordination/recovery and coverage across concurrent supported local Codex sessions and long-running tools.
-- **Meaningful alerts:** user-visible delivery, deduplication, cooldown, acknowledgement and repeat behavior for materially changed findings. Alerts are required; a dedicated dashboard can remain later work.
-- **Historical analysis:** explicit request-driven local historical sources, path verification, current occupancy measurement, recorded/candidate/unattributed association and shared-artifact deduplication. It must operate without pre-existing plugin snapshots. Historical growth remains unknown when no usable before/after evidence exists.
-- **Installed host acceptance:** real Desktop lifecycle delivery, common Hooks/MCP/worker state resolution, actual observation overhead and a real visible alert. Installation, MCP connectivity and the user's hook trust alone do not prove these behaviors.
+The test-first black-box suites cover the legacy transport/accounting flow, new global operation and failure/compatibility boundaries. They create real files through external processes, concurrent hook clients, an elected background worker, a crash/recovery, long-running writes without PostToolUse, explicit pre-enable history, and actual MCP exchanges. Installed-copy E2E verifies marketplace packaging and source hashes. Reports retain commands, prerequisites, inputs and logs; see [verification](verification.md).
 
-Verified external-process write ownership, transient peak tracking, daily rollups, reliable inactive-artifact inference, Docker guest internals and Windows support also remain unimplemented. Unsupported sources or environments must be explicit coverage gaps. The current runtime is not a continuously running system-wide profiler.
+No automated fixture proves that a real Desktop chat delivered its hooks or that a native banner was visible. Native notification acceptance must remain separate from command success. Personal run receipts belong in the delivery artifacts rather than an unconditional all-host claim.
 
-Personal local use remains the scope. No public-directory submission, reduced skills-only substitute, remote service, telemetry, cloud sync or deletion/execution tool is planned. WXY repository distribution and personal installation are separate from official-marketplace publication.
+## Remaining limits
 
-## Next bounded stages
+- Local supported hooks/roots only, not remote/cloud sessions or whole-disk readability. Discovery may miss custom external tool stores; configure them globally if needed.
+- Temporal/path correlation, not verified process ownership, exclusive session totals or global per-turn byte accounting.
+- Live metadata walks; restart loses unfinished in-memory cursors. Short-lived peaks can be missed. No login service or filesystem event stream.
+- Monitor root totals are not additive across shared hardlinks/time windows. Explicit history deduplicates globally.
+- Bounded historical analysis may return partial lower bounds; no durable resume job, unsupported formats/paths remain gaps. No raw transcript retention, age-based inactivity claim or invented historical growth.
+- Docker guest internals, APFS exact reclaim, daily rollups, Windows observer and a dedicated panel remain future work.
+- Large-machine baseline completion/overhead, across-chat host coverage and OS-visible delivery require ongoing personal acceptance.
 
-1. **Shared global foundation:** unify global state, discovery/capacity inventory and bounded worker coordination. Preserve 0.1.0 data/compatibility and test across different projects/chats before claiming all-session coverage.
-2. **Monitor and alerts:** exercise substantial real external-process growth, concurrency and long-running work, then deliver a meaningful user-visible alert and verify unchanged-state silence.
-3. **Pre-enable historical investigation:** create old-session/artifact fixtures before initializing plugin history; explicitly analyze surviving occupancy and evidence, with missing/shared/ambiguous cases.
-4. **Integrated personal acceptance:** run both functions from the installed WXY plugin in actual Desktop chats and retain replayable evidence. A panel can follow after the core functions work.
-
-Write each stage's E2E scenarios before runtime implementation. The complete criteria are in [product scope](product-scope.md); no new runtime capability is activated by this documentation update.
+No official-marketplace submission, reduced skills-only substitute, remote service, telemetry/cloud sync or deletion/execution tool is included.

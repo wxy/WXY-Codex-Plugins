@@ -64,6 +64,9 @@ def operate(name, args=None):
     if workspace is not None and (not isinstance(workspace,str) or not Path(workspace).is_absolute()):
         raise ValueError('workspace must be an absolute path')
     config = load_config(workspace)
+    if name in ('analyze-history','alerts','test-notification') or config.get('version') == 2 or (not config['enabled'] and (config['data_dir']/'global.sqlite3').exists()):
+        from .monitor import operate as global_operate
+        return global_operate(name,args)
     if name=='status':
         result = {'schema_version':1,'enabled':config['enabled'],'config_path':str(config['config_path']),
                   'data_directory':str(config['data_dir']),'deletion_supported':False,
@@ -98,5 +101,9 @@ def handle_hook(payload):
     if not config['enabled']: return
     if 'codex' in (metadata.get('tool_name') or '').lower() and 'footprint' in (metadata.get('tool_name') or '').lower():
         return  # Avoid recording observation of the observer's own MCP tools.
+    if config.get('version') == 2:
+        from .monitor import enqueue
+        enqueue(config,metadata,cwd)
+        return
     with history(config,True) as store:
         store.capture(metadata,scan=metadata['event'] not in {'SessionEnd','Interrupt'})

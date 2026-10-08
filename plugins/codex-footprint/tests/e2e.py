@@ -216,7 +216,7 @@ def main():
                 responses = [json.loads(line) for line in proc.stdout.splitlines()]
                 by_id = {r['id']:r for r in responses}
                 assert len(responses) == 11
-                assert len(by_id[2]['result']['tools']) == 5
+                assert {'footprint_status','footprint_scan','footprint_report','footprint_explain','footprint_cleanup_plan','footprint_analyze_history','footprint_alerts'} <= {t['name'] for t in by_id[2]['result']['tools']}
                 for i in range(3, 8):
                     assert not by_id[i]['result'].get('isError'), by_id[i]
                 assert by_id[6]['result']['structuredContent']['execution_supported'] is False
@@ -225,7 +225,7 @@ def main():
                 assert by_id[10]['error']['code'] == -32602
                 assert before == hashlib.sha256((root / 'build/output.bin').read_bytes()).hexdigest()
                 return responses
-            case('MCP handshake, all five tools, input rejection and non-destructive plan', mcp)
+            case('MCP handshake, all seven tools, input rejection and non-destructive plan', mcp)
 
             def incomplete():
                 config['observer']['max_entries'] = 2

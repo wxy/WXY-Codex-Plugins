@@ -24,6 +24,20 @@ def main():
             p.add_argument('--turn-id')
             p.add_argument('--limit',type=int,default=20)
         if name=='explain': p.add_argument('--path')
+    enable = sub.add_parser('enable')
+    enable.add_argument('--root',action='append',default=[])
+    enable.add_argument('--no-defaults',action='store_true')
+    enable.add_argument('--no-start',action='store_true')
+    enable.add_argument('--notifications',choices=['desktop','inbox'],default='desktop')
+    sub.add_parser('disable')
+    tick = sub.add_parser('tick')
+    tick.add_argument('--rounds',type=int,default=1)
+    worker = sub.add_parser('worker')
+    worker.add_argument('--max-ticks',type=int)
+    sub.add_parser('analyze-history')
+    sub.add_parser('test-notification')
+    alerts = sub.add_parser('alerts')
+    alerts.add_argument('--ack')
     sub.add_parser('hook')
     sub.add_parser('serve')
     init = sub.add_parser('init-config')
@@ -43,6 +57,16 @@ def main():
             print(f'codex-footprint: observation skipped ({type(exc).__name__}: {exc})',file=sys.stderr)
         return 0  # No stdout, decision, permission rewrite, or exit 2.
     try:
+        if command in ('enable','disable','tick','worker'):
+            from . import monitor
+            if command=='enable': value=monitor.enable(args['root'],not args['no_defaults'],not args['no_start'],args['notifications'])
+            elif command=='disable': value=monitor.disable()
+            elif command=='tick':
+                if not 1<=args['rounds']<=1000: raise ValueError('rounds must be 1 to 1000')
+                value=monitor.tick(args['rounds'])
+            else: value=monitor.worker(args['max_ticks'])
+            print(json.dumps(value,indent=2,ensure_ascii=False))
+            return 0
         if command=='serve':
             from .mcp import serve
             serve()
