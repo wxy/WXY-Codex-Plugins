@@ -1,4 +1,4 @@
-# Verification and replay — 0.2.0
+# Verification and replay — 0.3.0
 
 ## Test-first black-box suites
 
@@ -8,9 +8,10 @@ Prerequisites: macOS/Linux, Python >=3.9, writable system temporary directory, s
 python3 tests/e2e.py --output artifacts/legacy
 python3 tests/e2e_global.py --output artifacts/global
 python3 tests/e2e_global_edges.py --output artifacts/edges
+python3 tests/e2e_monitor_dashboard.py --output artifacts/dashboard
 ```
 
-Each suite leaves `report.json`, `report.md`, and `transcript.json` with commands, environment/prerequisites, generated inputs, outcomes and diagnostics. Temporary fixtures are removed; checked-in runners recreate them. Fixtures use lower thresholds and real external writer processes, not synthetic byte counters. No native notifications run in fixture suites.
+Each suite retains reports only with commands, environment/prerequisites, generated-input recipes, outcomes and necessary diagnostics. Full process/transport logs are not retained. Temporary fixtures are removed; checked-in runners recreate them. Fixtures use lower thresholds and real external writer processes, not synthetic byte counters. No native notifications run in fixture suites.
 
 The 19 legacy cases cover snapshots/accounting, hook transport, seven-tool MCP handshake, input rejection, non-destructive plans, budgets, missing roots, concurrency, privacy, retention and reproducible relocated archives. The 15 global cases cover stable state, concurrent sessions/projects, fair sliced progress, external growth, alert silence/re-alert/ack, missing endpoints, worker lock/health, explicit pre-enable archived evidence and inode deduplication, new MCP history operation and monitoring-off analysis. The edge suite covers stable defaults, legacy DB preservation, root aliases, symlinks, invalid config fail-open, exclusions, bounded partial history, worker crash recovery, long tool polling, host disable, a separate notification probe, scope-change baselines real explicit refresh and full bounded budget use with many roots.
 
@@ -24,7 +25,7 @@ From WXY repository root, with a compatible Codex CLI available:
 python3 tests/e2e_codex_footprint_marketplace.py --output test-artifacts/codex-footprint/marketplace
 ```
 
-Creates/removes a disposable Codex profile, installs the actual WXY entry, compares source hashes, confirms unconfigured installation stays inactive and runs all three suites from its installed cache. Reports include CLI version/commands/install receipt/source HEAD. No personal settings, hook trust or model calls are changed.
+Creates/removes a disposable Codex profile, installs the actual WXY entry, compares source hashes, confirms unconfigured installation stays inactive and runs all four suites from its installed cache. Reports include CLI version/commands/install receipt/source HEAD. No personal settings, hook trust or model calls are changed.
 
 ## Real Desktop acceptance
 
@@ -44,3 +45,7 @@ python3 scripts/codex_footprint.py package --profile local --output dist
 ```
 
 Identical source produces identical archive hashes. Full runtime/hooks/MCP/tests/docs ship. No official-marketplace publication is part of acceptance.
+
+## Version 0.3 acceptance
+
+The new black-box suite was run failing before implementation. It covers budget reuse, an actual external writer and autonomous worker alert, metadata-only/idempotent daily rollups, endpoint retention under pruning, fixed-route read-only panel and request rejection, new MCP annotations/date rejection, recovery-service preview and successful disabled supervisor exit. Tests bind temporary loopback ports and remove all fixtures/processes. A service plan is not proof of actual login/restart: install on the personal host, record the elected PID, terminate only that worker, and verify a different elected PID/healthy heartbeat plus preserved SQLite history. A real logout/login remains a distinct manual gate.

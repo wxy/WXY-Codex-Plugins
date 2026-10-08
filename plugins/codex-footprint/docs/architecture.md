@@ -1,4 +1,4 @@
-# Architecture — 0.2.0
+# Architecture — 0.3.0
 
 An independent local Codex-specific development storage growth monitor. [Product scope](product-scope.md) defines global monitoring/alerts and explicit pre-enable historical occupancy analysis. Personal use takes priority; no deletion, telemetry or remote service exists.
 
@@ -15,7 +15,10 @@ flowchart LR
   DB --> E[Heavy hitters and evidence]
   E --> N[Alert inbox and macOS notifications]
   E --> M[MCP explanations and review plans]
-  E -. optional future .-> P[Panel]
+  E --> P[Read-only localhost panel]
+  DB --> R[Daily metadata summary]
+  R --> P
+  R --> S[Codex scheduled-chat reminder]
 ```
 
 ## Boundaries
@@ -26,7 +29,10 @@ flowchart LR
 - `inventory.py`: resumable, descriptor-relative metadata walks with no-follow child opens, device/depth boundaries, bounded hardlink set and top files. No ordinary artifact contents are opened.
 - `global_store.py`: separate schema-versioned `global.sqlite3`; read-only queries do not initialize absent state. Serial worker writes; explicit history/ack writes use SQLite locking/transactions.
 - `historical.py`: explicitly requested current/archived local JSONL adapter, structured surviving path evidence, bounded metadata measurement and global inode deduplication. Derived references/measurements persist, raw transcript text does not.
-- `mcp.py`/`cli.py`: seven local stdio tools and direct operations, bounded input validation and no network listener.
+- `mcp.py`/`cli.py`: nine local stdio tools and direct operations with bounded input validation.
+- `panel.py`: fixed-route loopback read-only HTTP snapshot; Host/Origin validation, CSP and no external resources.
+- `summaries.py`: durable 90-day daily endpoints/reports; no artifact/session traversal.
+- `supervisor.py`: explicitly installed macOS user LaunchAgent, stable runtime pointer and failure restart; successful disabled exit stays stopped.
 - `observer.py`, `store.py`, `engine.py`: preserved version-1 explicit-root snapshot engine, same-scope task/turn baselines and directory buckets. Existing `footprint.sqlite3` is not rewritten.
 - `packaging.py`: reproducible full local ZIP, including hooks, MCP, source, docs and tests.
 
@@ -34,9 +40,9 @@ flowchart LR
 
 Seven unchanged hook definitions receive SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SessionEnd and Interrupt. They store allowlisted IDs, tool/family labels, workspace and timestamp, never prompt, command, arguments, raw output or environment. Invalid input/config remains fail-open with a diagnostic and exit 0. Short Interrupt hooks may still be terminated by the host; acceptance must expose gaps.
 
-Atomic spool files allow concurrent clients. A held filesystem lock elects exactly one worker; race losers exit. Each tick drains bounded events, discovers/compacts roots and advances fair bounded walks. Volume sampling is independent of directory completion. Open traversals are capped according to descriptor limits. Worker health is checked using the held lock and a heartbeat, not PID alone.
+Atomic spool files allow concurrent clients. A held filesystem lock elects exactly one worker; race losers exit. Each tick drains bounded events, discovers/compacts roots and advances fair bounded walks. Unused entry budget is redistributed across active walks while the time slice remains; recent lifecycle work prioritizes its root as capacity becomes available, preserving in-progress cold cursors. Open walks remain bounded. Volume sampling is independent of directory completion. Open traversals are capped according to descriptor limits. Worker health is checked using the held lock and a heartbeat, not PID alone.
 
-Disable sets global `enabled=false`; the worker exits at its next tick. The WXY plugin's global host `enabled=false` is also observed. No history is erased. Crash recovery occurs on the next trusted event/explicit enable/scan, not through a login service. Partially completed traversal state is in memory; after a crash it restarts with incomplete coverage rather than pretending completion. Explicit scan writes a real refresh request and can start a worker even when automatic startup is off.
+Disable sets global `enabled=false`; the worker exits at its next tick. The WXY plugin's global host `enabled=false` is also observed. No history is erased. An explicitly installed macOS user service starts at login and restarts failures. Without installation, crash recovery waits for the next trusted event/explicit enable/scan. The service honors both global and host disable switches. Partially completed traversal state is in memory; after a crash it restarts with incomplete coverage rather than pretending completion. Explicit scan writes a real refresh request and can start a worker even when automatic startup is off.
 
 ## Measurements and signals
 
@@ -57,3 +63,9 @@ Current history analysis is synchronous and bounded to at most ten seconds. A pa
 ## Retention and privacy
 
 Default global retention is 500 finished observations, volume samples, findings and analysis results each, plus 5,000 events. Latest inventory persists separately. Many roots or small retention can evict comparable baselines, yielding unknown growth. SQLite reuses freed pages; no automatic vacuum or user-artifact deletion occurs. Global data stays outside projects/plugin versions. A legacy configuration is backed up before upgrading; its original database remains queryable through that saved configuration.
+
+## Derived daily reports and UI
+
+Complete monitor endpoints update daily first/last rows before snapshot pruning. Rollups are idempotent by local date and retained 90 days; they disclose independent observation intervals and never imply full-day coverage from short samples. Missing endpoints or changed scope yield unknown growth. Roots and session figures are not summed. Preparing a rollup and refreshing a panel read retained metadata only.
+
+The worker owns a read-only loopback server. A standalone panel server is also available, with no scan side effect. A separate Codex scheduled chat calls the daily operation at 21:00 and reports through supported app activity. Immediate third-party notification-center push has no established public API; system notifications and the durable inbox remain the immediate channel. See official [notifications](https://learn.chatgpt.com/docs/notifications), [scheduled tasks](https://learn.chatgpt.com/docs/automations?surface=app) and the [delivery plan](monitor-dashboard-plan.md).

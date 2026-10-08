@@ -1,4 +1,4 @@
-"""Minimal MCP stdio transport: JSON-RPC lines, initialization and seven tools."""
+"""Minimal MCP stdio transport: JSON-RPC lines, initialization and nine tools."""
 from __future__ import annotations
 import json
 import sqlite3
@@ -12,6 +12,8 @@ MAX_LINE = 1024*1024
 WORKSPACE = {'workspace':{'type':'string','description':'Absolute Codex workspace path. Needed when configuration uses $CWD.'}}
 TASK = dict(WORKSPACE,session_id={'type':'string'},turn_id={'type':'string'},limit={'type':'integer','minimum':1,'maximum':100})
 SPECS = {
+    'footprint_daily_summary':('daily-report','Update the daily summary from retained monitoring metadata only. Does not scan the filesystem or reconstruct historical sessions; updates the read-only panel.',{'day':{'type':'string','description':'Optional local date YYYY-MM-DD; defaults to today.'}}),
+    'footprint_dashboard':('dashboard','Read the monitoring panel data and its local browser URL. Read-only; does not trigger scanning or historical analysis.',{}),
     'footprint_analyze_history':('analyze-history','Explicitly analyze existing Codex session-associated occupancy, including pre-enable artifacts. Reads local historical evidence and writes a derived index; no deletion.',{'limit':{'type':'integer','minimum':1,'maximum':100}}),
     'footprint_alerts':('alerts','Read meaningful global findings and delivery status; optionally acknowledge all or one numeric finding ID.',{'ack':{'type':'string','description':'Optional: all, or a numeric finding ID. Updates only local acknowledgement metadata.'}}),
     'footprint_status':('status','Read observer configuration, coverage capabilities and history status.',WORKSPACE),
@@ -25,7 +27,7 @@ SPECS = {
 def tools():
     return [{'name':name,'description':description,
              'inputSchema':{'type':'object','properties':props,'additionalProperties':False},
-             'annotations':{'readOnlyHint':operation not in ('scan','analyze-history','alerts'),'destructiveHint':False,
+             'annotations':{'readOnlyHint':operation not in ('scan','analyze-history','alerts','daily-report'),'destructiveHint':False,
                             'idempotentHint':operation not in ('scan','analyze-history','alerts'),'openWorldHint':False}}
             for name,(operation,description,props) in SPECS.items()]
 

@@ -64,7 +64,7 @@ def operate(name, args=None):
     if workspace is not None and (not isinstance(workspace,str) or not Path(workspace).is_absolute()):
         raise ValueError('workspace must be an absolute path')
     config = load_config(workspace)
-    if name in ('analyze-history','alerts','test-notification') or config.get('version') == 2 or (not config['enabled'] and (config['data_dir']/'global.sqlite3').exists()):
+    if name in ('analyze-history','alerts','test-notification','daily-report','dashboard') or config.get('version') == 2 or (not config['enabled'] and (config['data_dir']/'global.sqlite3').exists()):
         from .monitor import operate as global_operate
         return global_operate(name,args)
     if name=='status':

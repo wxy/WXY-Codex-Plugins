@@ -30,3 +30,7 @@ A/B/C runtime and automated scenarios are implemented in 0.2.0. Three installed-
 D is partial real-host acceptance: first large-machine baselines are still building; actual production-growth notification visibility, complete cross-project baselines and sustained overhead remain open. No full investigation of private historical sessions was started implicitly. Source test fixture history does prove the pre-enable flow; the user's own history waits for an explicit analysis request. A fresh chat is needed to load the new MCP tool set after upgrade.
 
 A real-machine follow-up found unused entry budget with many roots. A failing 70-root black-box case precedes the scheduler correction: allocate slices across active walks while enforcing the total tick entry/time caps, and expose discovered/completed/pending counts in worker health.
+
+## 0.3.0 follow-up
+
+Implemented the accepted manual-analysis/background-monitor boundary, improved fair budget use and active-project scheduling, metadata-only daily rollups, read-only localhost UI, and explicit macOS login/failure recovery. Installed-copy acceptance passed 56 black-box scenarios; see [replay report](verification-0.3.0.md). Codex daily reminders use a separately configured 21:00 scheduled chat. No deletion, automatic whole-disk analysis or third-party notification-center injection is added.

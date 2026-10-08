@@ -1,4 +1,4 @@
-# Global configuration — 0.2.0
+# Global configuration — 0.3.0
 
 Enable once per machine, independently of chats/projects. Missing configuration means inactive hooks. Historical investigation can still run on explicit request while monitoring is off.
 
@@ -37,9 +37,9 @@ See the disabled `config/example.json`. Roots are absolute/`~` paths; nested pat
 | --- | --- | --- |
 | `enabled` | false in example | Global observation switch |
 | `discovery` | true | Known development roots plus event workspaces |
-| `monitor.interval_seconds` | 2 | Tick pause |
+| `monitor.interval_seconds` | 0.5 | Tick pause |
 | `monitor.refresh_seconds` | 60 | Minimum pause between completed root walks |
-| `monitor.slice_entries` | 1,000 | Per-tick allocation split among roots |
+| `monitor.slice_entries` | 5,000 | Per-tick shared entry budget, reused while time remains |
 | `monitor.slice_seconds` | 0.05 | Metadata traversal time slice |
 | `monitor.autostart` | true | Restart worker on trusted hook |
 | `notifications.backend` | desktop | macOS notification adapter or inbox |
@@ -58,4 +58,12 @@ See the disabled `config/example.json`. Roots are absolute/`~` paths; nested pat
 
 Legacy `observer` options apply only to version-1 snapshots; version-2 scheduling uses `monitor`. A large first baseline may take multiple ticks. Incomplete roots expose progress/errors and unknown growth. Running walks resume across ticks; restart begins unfinished walks again. Whole-volume capacity changes are not Codex-attributed growth.
 
-No login agent is installed. Workers start on enable/trusted hooks/explicit scan; crash recovery waits for the next such action. Global disable (or WXY host plugin global toggle off) stops the worker without erasing history. No per-chat setting changes are needed.
+Run `install-service` explicitly on macOS to install `~/Library/LaunchAgents/xingyu.wang.codexfootprint.plist` and a stable `state/runtime` link to this plugin. It runs as your user, starts at login and restarts unexpected exits with a 10-second throttle. `service-plan` previews without changes; `remove-service` removes only that service and preserves history. After disabling and re-enabling, run `install-service` again to reload the service. Without a service, workers start on enable/trusted hooks/explicit scan. Existing explicit monitor settings are preserved on upgrade; adjust them intentionally to adopt the new defaults. Global disable (or WXY host plugin global toggle off) stops the worker without erasing history. No per-chat setting changes are needed.
+
+## Panel and daily summary
+
+The elected worker serves `http://127.0.0.1:8766/`; `dashboard` returns its URL and retained state. `CODEX_FOOTPRINT_PANEL_PORT` can override the port. `panel --port PORT` starts a standalone read-only server, without starting observation. A port conflict does not stop monitoring; unavailable panel status is explicit. Only fixed GET routes are accepted; no arbitrary files or write endpoints are exposed. Local applications can read the endpoint; there is no remote binding or account.
+
+`daily-report [--day YYYY-MM-DD]` updates one idempotent daily report from monitor metadata only, including while observation is disabled. Daily first/last complete endpoints survive short snapshot retention for 90 days. Unknown/changed-scope endpoints cannot produce growth. Dates with no records remain empty. The worker prepares today's report at/after 21:00 local time. Configure a separate Codex daily scheduled chat at 21:00 to refresh and report it through Codex Activity; this is not a whole-disk scan. Computer/app availability affects scheduled delivery; there is no promise of delivery while asleep.
+
+Recently hooked project roots receive priority and a two-second minimum refresh pause; cold roots retain the configured pause. A root still needs a complete walk and comparable baseline. Neither the tick pause nor panel refresh is a guaranteed anomaly-detection deadline.

@@ -19,7 +19,7 @@ def build(profile, output):
             files[relative] = (repo/relative).read_bytes()
         for folder in ('src','skills','config','assets','docs','tests'):
             for path in (repo/folder).rglob('*'):
-                if path.is_file() and path.suffix in ('.py','.md','.json','.svg'):
+                if path.is_file() and path.suffix in ('.py','.md','.json','.svg','.html'):
                     files[str(path.relative_to(repo))] = path.read_bytes()
     else:
         raise ValueError('Unknown package profile')

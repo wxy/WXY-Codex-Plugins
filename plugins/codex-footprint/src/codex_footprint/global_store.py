@@ -37,6 +37,10 @@ class GlobalStore:
                     initial.close();temporary.unlink(missing_ok=True)
             self.db=sqlite3.connect(self.path,timeout=3)
             if self.db.execute('PRAGMA user_version').fetchone()[0]!=1:self.close();raise ValueError('Unsupported global history schema')
+            self.db.executescript('''
+                CREATE TABLE IF NOT EXISTS daily_roots(day TEXT NOT NULL,path TEXT NOT NULL,first_payload TEXT NOT NULL,last_payload TEXT NOT NULL,PRIMARY KEY(day,path));
+                CREATE TABLE IF NOT EXISTS daily_reports(day TEXT PRIMARY KEY,payload TEXT NOT NULL);
+            ''')
         else:
             self.db=sqlite3.connect(self.path.as_uri()+'?mode=ro',uri=True,timeout=3)
             if self.db.execute('PRAGMA user_version').fetchone()[0]!=1: self.close(); raise ValueError('Unsupported global history schema')

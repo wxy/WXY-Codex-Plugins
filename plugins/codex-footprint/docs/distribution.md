@@ -1,6 +1,6 @@
 # WXY Codex Plugins distribution
 
-Canonical source: `WXY-Codex-Plugins/plugins/codex-footprint/`. Version **0.2.0** packages the full local global-monitor and explicit-history runtime. Official-marketplace publication is outside scope.
+Canonical source: `WXY-Codex-Plugins/plugins/codex-footprint/`. Version **0.3.0** packages the full local global-monitor and explicit-history runtime. Official-marketplace publication is outside scope.
 
 ```sh
 codex plugin marketplace add wxy/WXY-Codex-Plugins
@@ -25,4 +25,4 @@ From WXY root:
 python3 tests/e2e_codex_footprint_marketplace.py --output test-artifacts/codex-footprint/marketplace
 ```
 
-The test installs the actual entry in a disposable Codex profile, compares hashes and runs all three E2E suites from the installed copy. It changes no personal profile, bypasses no trust and calls no model. Real Desktop event delivery, visible notifications and observation overhead remain distinct acceptance gates.
+The test installs the actual entry in a disposable Codex profile, compares hashes and runs all four E2E suites from the installed copy. It changes no personal profile, bypasses no trust and calls no model. Real Desktop event delivery, visible notifications and observation overhead remain distinct acceptance gates.

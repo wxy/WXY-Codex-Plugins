@@ -51,7 +51,7 @@ def main():
                      CODEX_FOOTPRINT_CONFIG=str(state/'config.json'),PYTHONDONTWRITEBYTECODE='1')
             def run(arguments, timeout=30):
                 proc=subprocess.run(arguments,env=env,cwd=REPO,text=True,capture_output=True,timeout=timeout)
-                report['steps'].append({'arguments':arguments,'code':proc.returncode,'stdout':proc.stdout,'stderr':proc.stderr})
+                report['steps'].append({'arguments':arguments,'code':proc.returncode,'stdout_sha256':hashlib.sha256(proc.stdout.encode()).hexdigest(),'stderr_excerpt':proc.stderr[:500]})
                 assert proc.returncode==0, proc.stderr or proc.stdout
                 return proc
             run([codex,'--version'])
@@ -62,7 +62,7 @@ def main():
             digests={}
             for relative in ['.codex-plugin/plugin.json','.mcp.json','hooks/hooks.json','scripts/codex_footprint.py',
                              'src/codex_footprint/observer.py','src/codex_footprint/engine.py','src/codex_footprint/service.py',
-                             'src/codex_footprint/monitor.py','src/codex_footprint/global_store.py','src/codex_footprint/inventory.py','src/codex_footprint/historical.py']:
+                             'src/codex_footprint/monitor.py','src/codex_footprint/global_store.py','src/codex_footprint/inventory.py','src/codex_footprint/historical.py','src/codex_footprint/summaries.py','src/codex_footprint/panel.py','src/codex_footprint/supervisor.py','assets/dashboard.html']:
                 a=hashlib.sha256((PLUGIN/relative).read_bytes()).hexdigest()
                 b=hashlib.sha256((cache/relative).read_bytes()).hexdigest()
                 assert a==b, relative
@@ -75,12 +75,13 @@ def main():
             core=json.loads((output/'installed-e2e/report.json').read_text())
             assert core['failed']==0 and core['passed']>=19
             report['installed_core_results']={'passed':core['passed'],'failed':core['failed']}
-            for suite in ('e2e_global','e2e_global_edges'):
+            for suite in ('e2e_global','e2e_global_edges','e2e_monitor_dashboard'):
                 run([sys.executable,str(cache/('tests/'+suite+'.py')),'--output',str(output/suite)],timeout=90)
                 result=json.loads((output/suite/'report.json').read_text())
-                assert result['failed']==0
-                report[suite]={'passed':result['passed'],'failed':result['failed']}
+                assert result.get('failed',0)==0 and result.get('result','pass')=='pass'
+                report[suite]={'passed':result.get('passed',len(result.get('cases',[]))),'failed':result.get('failed',0)}
             report['installation']=installed
+        report['temporary_profile_removed']=not temporary.exists()
         report['result']='pass'
     except Exception:
         report['error']=traceback.format_exc()

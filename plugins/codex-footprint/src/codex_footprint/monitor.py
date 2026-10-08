@@ -16,7 +16,7 @@ from .config import data_directory, OBSERVER, THRESHOLDS, RETENTION, number
 from .global_store import GlobalStore
 from .inventory import Cycle
 
-MONITOR={'interval_seconds':2,'refresh_seconds':60,'slice_entries':1000,'slice_seconds':0.05,'autostart':True}
+MONITOR={'interval_seconds':0.5,'refresh_seconds':60,'slice_entries':5000,'slice_seconds':0.05,'autostart':True}
 NOTIFICATIONS={'backend':'desktop','cooldown_seconds':3600,'material_growth_bytes':256*1024**2,'minimum_free_bytes':10*1024**3}
 HISTORY={'max_files':2000,'max_records':100000,'max_seconds':10,'max_entries':100000}
 
@@ -182,6 +182,7 @@ def enqueue(config,metadata,cwd):
 
 
 def status(config):
+    from .panel import info
     data=config['data_dir'];health=worker_health(data)
     with GlobalStore(data) as store:
         sessions=store.db.execute('SELECT count(DISTINCT session) FROM events').fetchone()[0] if store.db else 0
@@ -192,8 +193,8 @@ def status(config):
                 'roots':store.payloads('inventory'),'volumes':store.payloads('volumes'),
                 'pending_events':len(list((data/'spool').glob('*.json'))) if (data/'spool').exists() else 0,
                 'notification_backend':config.get('notifications',NOTIFICATIONS)['backend'],'notification_visibility':'unverified; OS settings may suppress desktop notifications',
-                'coverage':{'hosts':'supported local Codex lifecycle events','process_ownership':False,'filesystem':'discovered roots; cross-device and unreadable paths are gaps','restart_recovery':'next trusted hook/explicit enable restarts a stopped worker'},
-                'deletion_supported':False,'process_attribution_supported':False,'ui_supported':False,
+                'coverage':{'hosts':'supported local Codex lifecycle events','process_ownership':False,'filesystem':'discovered roots; cross-device and unreadable paths are gaps','restart_recovery':'installed macOS login service restarts failures; otherwise next trusted hook/explicit enable'},
+                'deletion_supported':False,'process_attribution_supported':False,'ui_supported':True,'panel':info(config),
                 'legacy_history_preserved':(data/'footprint.sqlite3').exists()}
 
 
@@ -250,13 +251,14 @@ def volume_rows(roots):
 
 
 class Runner:
-    def __init__(self,config):
+    def __init__(self,config,one_shot=False):
+        self.one_shot=one_shot
         import resource
         self.config=config;self.cycles={};self.completed={};self.last_volume=0;self.cursor=0
         self.exclusions=tuple(sorted(config['exclude_names']))
         limit=resource.getrlimit(resource.RLIMIT_NOFILE)[0]
         self.max_active=max(1,min(8,(int(limit)-64)//65)) if limit>0 else 2
-        self.discovery_paths=[];self.discovery_at=0
+        self.discovery_paths=[];self.discovery_at=0;self.hot_until={}
     def close(self):
         for cycle in self.cycles.values():cycle.close()
     def step(self):
@@ -278,6 +280,7 @@ class Runner:
                         event=json.loads(p.read_text());cwd=Path(event['cwd'])
                         if not cwd.is_absolute():raise ValueError('invalid cwd')
                         store.db.execute('INSERT OR IGNORE INTO events VALUES(?,?,?,?,?)',(event['id'],event['created_at'],event.get('session_id'),str(cwd),json.dumps(event)))
+                        self.hot_until[str(cwd)]=time.time()+60
                         store.db.commit();p.unlink()
                     except (ValueError,KeyError,OSError):
                         # Preserve bounded failure evidence; do not persist an untrusted event's raw text.
@@ -306,23 +309,37 @@ class Runner:
             ordered=sorted(paths,key=lambda p:self.completed.get(p,0))
             if ordered:
                 offset=self.cursor%len(ordered);ordered=ordered[offset:]+ordered[:offset];self.cursor+=1
-            for path in ordered:
-                if path not in self.cycles and len(self.cycles)<self.max_active and time.time()-self.completed.get(path,0)>=config['monitor']['refresh_seconds']:
-                    self.cycles[path]=Cycle(path,data,config['exclude_names'])
-                cycle=self.cycles.get(path)
-                if not cycle:continue
-                before=cycle.row['entries_visited']
-                row=cycle.step(min(count,remaining),deadline)
-                remaining-=row['entries_visited']-before
-                row['measurement_scope']=hashlib.sha256(json.dumps({'path':path,'state':str(data),'exclude_names':exclusions,'accounting':1},sort_keys=True).encode()).hexdigest()
-                old=store.db.execute('SELECT payload FROM observations WHERE path=? ORDER BY id DESC LIMIT 1',(path,)).fetchone()
-                previous=json.loads(old[0]) if old else None
-                row['growth_bytes']=row['allocated_bytes']-previous['allocated_bytes'] if row['finished'] and row['complete'] and previous and previous['complete'] and previous.get('measurement_scope')==row['measurement_scope'] else None
-                store.db.execute('INSERT OR REPLACE INTO inventory VALUES(?,?)',(path,json.dumps(row)))
-                if row['finished']:
-                    store.db.execute('INSERT INTO observations(path,ts,payload) VALUES(?,?,?)',(path,time.time(),json.dumps(row)))
-                    issue(store,config,row,previous);self.completed[path]=time.time();self.cycles.pop(path).close()
-                if remaining<=0 or time.monotonic()>=deadline:break
+            self.hot_until={p:t for p,t in self.hot_until.items() if t>time.time()}
+            hot={path for path in paths if any(Path(path)==Path(cwd) or Path(path) in Path(cwd).parents for cwd in self.hot_until)}
+            # Recent lifecycle work gets the first allocation; every active root keeps a fair allocation.
+            ordered.sort(key=lambda p:p not in hot)
+            from .summaries import remember
+            finished_this_step=set()
+            while remaining>0 and time.monotonic()<deadline:
+                progressed=False
+                for path in ordered:
+                    if path in finished_this_step or (self.one_shot and path in self.completed):continue
+                    pause=min(config['monitor']['refresh_seconds'],2) if path in hot else config['monitor']['refresh_seconds']
+                    if path not in self.cycles and len(self.cycles)<self.max_active and time.time()-self.completed.get(path,0)>=pause:
+                        self.cycles[path]=Cycle(path,data,config['exclude_names'])
+                    cycle=self.cycles.get(path)
+                    if not cycle:continue
+                    before=cycle.row['entries_visited']
+                    row=cycle.step(min(count,remaining),deadline)
+                    consumed=row['entries_visited']-before
+                    remaining-=consumed;progressed=progressed or consumed>0 or row['finished']
+                    row['measurement_scope']=hashlib.sha256(json.dumps({'path':path,'state':str(data),'exclude_names':exclusions,'accounting':1},sort_keys=True).encode()).hexdigest()
+                    old=store.db.execute('SELECT payload FROM observations WHERE path=? ORDER BY id DESC LIMIT 1',(path,)).fetchone()
+                    previous=json.loads(old[0]) if old else None
+                    row['growth_bytes']=row['allocated_bytes']-previous['allocated_bytes'] if row['finished'] and row['complete'] and previous and previous['complete'] and previous.get('measurement_scope')==row['measurement_scope'] else None
+                    store.db.execute('INSERT OR REPLACE INTO inventory VALUES(?,?)',(path,json.dumps(row)))
+                    if row['finished']:
+                        finished_this_step.add(path)
+                        store.db.execute('INSERT INTO observations(path,ts,payload) VALUES(?,?,?)',(path,time.time(),json.dumps(row)))
+                        remember(store,row,previous)
+                        issue(store,config,row,previous);self.completed[path]=time.time();self.cycles.pop(path).close()
+                    if remaining<=0 or time.monotonic()>=deadline:break
+                if not progressed:break
             if time.time()-self.last_volume>=max(1,config['monitor']['interval_seconds']):
                 for row in volume_rows(paths):
                     old=store.db.execute('SELECT payload FROM volumes WHERE path=?',(row['path'],)).fetchone()
@@ -351,17 +368,27 @@ def worker(max_ticks=None):
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:return {'already_running':True}
         runner=Runner(config);ticks=0
+        panel=None
+        try:
+            from .panel import Panel
+            panel=Panel(config,int(os.environ.get('CODEX_FOOTPRINT_PANEL_PORT','8766')))
+        except (OSError,ValueError) as exc:
+            atomic(data/'panel.json',{'url':None,'error':type(exc).__name__,'read_only':True})
         try:
             while True:
                 try:
                     result=runner.step();ticks+=1
+                    from .summaries import due
+                    due(runner.config)
                     atomic(data/'worker.json',{'pid':os.getpid(),'version':__version__,'last_tick':time.time(),'last_error':None,'progress':result})
                     if not result['enabled'] or (max_ticks and ticks>=max_ticks):break
                     time.sleep(runner.config['monitor']['interval_seconds'])
                 except Exception as exc:
                     atomic(data/'worker.json',{'pid':os.getpid(),'version':__version__,'last_tick':time.time(),'last_error':type(exc).__name__})
                     break
-        finally:runner.close()
+        finally:
+            runner.close()
+            if panel:panel.close()
         return {'ticks':ticks,'enabled':load()['enabled']}
 
 
@@ -372,7 +399,7 @@ def tick(rounds=1):
     with (data/'worker.lock').open('a+') as lock:
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:return {'already_running':True}
-        runner=Runner(config)
+        runner=Runner(config,one_shot=True)
         try:
             for _ in range(rounds):
                 result=runner.step()
@@ -384,6 +411,12 @@ def tick(rounds=1):
 def operate(name,args=None):
     args=args or {};config=load();data=config['data_dir']
     if name=='status':return status(config)
+    if name=='daily-report':
+        from .summaries import generate
+        return generate(config,args.get('day'))
+    if name=='dashboard':
+        from .panel import snapshot,info
+        return dict(snapshot(config),panel=info(config))
     if name=='test-notification':return notify(config,{'kind':'acceptance_probe'})
     if name=='scan':
         if not config['enabled'] or host_disabled():return {'schema_version':2,'queued':False,'reason':'observer disabled','observer':status(config)}

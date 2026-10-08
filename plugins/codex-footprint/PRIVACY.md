@@ -1,6 +1,6 @@
-# Local data and privacy — 0.2.0
+# Local data and privacy — 0.3.0
 
-Codex Footprint is an independent developer plugin for Codex. It has no network client, telemetry, account, cloud synchronization or deletion endpoint.
+Codex Footprint is an independent developer plugin for Codex. It has no remote network client, telemetry, account, cloud synchronization or deletion endpoint. A read-only server binds only to 127.0.0.1, serving retained metadata and packaged UI; local applications can read it. Host/Origin validation and CSP reject browser cross-origin reads. It is not a remote service or authentication boundary against other local processes.
 
 The global worker traverses discovered/configured development roots for metadata only. It retains absolute paths, file-block/logical bytes, counts, coverage/errors, timestamps and minimal allowlisted lifecycle IDs/tool-family labels. It does not open ordinary artifact contents. Hook prompts, command text/arguments, raw tool output and environments are not retained. Paths/IDs can still contain personal information; keep reports private.
 
@@ -10,6 +10,8 @@ Shared state resolves from `CODEX_FOOTPRINT_DATA`, else `${XDG_STATE_HOME:-~/.lo
 
 Default retention is 500 observations/capacity samples/findings/analysis results each and 5,000 events. Latest inventory is retained separately. SQLite may reuse freed pages rather than shrink immediately; no automatic vacuum or user-artifact deletion runs. Legacy configuration is backed up and the original snapshot database is preserved during global enablement.
 
-A detached local worker runs after enablement/trusted hooks. Global disable or the WXY host plugin global toggle stops it on its next tick. History remains local. No login service is installed; a stopped worker restarts on a later trusted hook or explicit enable/scan.
+A detached local worker runs after enablement/trusted hooks. Global disable or the WXY host plugin global toggle stops it on its next tick. History remains local. An explicitly installed macOS user LaunchAgent can start it at login and restore failed exits; otherwise it restarts on a later trusted hook or explicit enable/scan. The agent stores a private service manifest and stable runtime link, with no privileged daemon.
 
 Meaningful findings may send a macOS desktop notification with signal/bytes and a query prompt; paths are kept in the inbox rather than notification text. OS settings can suppress display. An optional inbox backend avoids native notification commands. MCP returns selected metadata into Codex when called; the conversation may therefore contain paths/IDs. The plugin itself does not upload them. Review any report before sharing it.
+
+Daily summaries retain first/last complete metadata endpoints and derived reports for 90 days, separately from snapshot pruning. Generating a daily report does not read historical session records or scan artifacts. A separately configured Codex scheduled chat can read/report these selected results at 21:00; those results then enter the Codex conversation under its normal data handling.

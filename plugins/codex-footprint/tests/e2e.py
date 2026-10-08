@@ -225,7 +225,7 @@ def main():
                 assert by_id[10]['error']['code'] == -32602
                 assert before == hashlib.sha256((root / 'build/output.bin').read_bytes()).hexdigest()
                 return responses
-            case('MCP handshake, all seven tools, input rejection and non-destructive plan', mcp)
+            case('MCP handshake, core tools, input rejection and non-destructive plan', mcp)
 
             def incomplete():
                 config['observer']['max_entries'] = 2
@@ -333,6 +333,7 @@ def main():
                     names = archive.namelist()
                     assert 'codex-footprint/hooks/hooks.json' in names
                     assert 'codex-footprint/.mcp.json' in names
+                    assert 'codex-footprint/assets/dashboard.html' in names
                     assert 'codex-footprint/.agents/plugins/marketplace.json' in names
                     assert 'codex-footprint/docs/distribution.md' in names
                     archive.extractall(fixture / 'unpacked')
@@ -351,7 +352,7 @@ def main():
     report['passed'] = sum(c['result']=='pass' for c in report['cases'])
     report['failed'] = sum(c['result']=='fail' for c in report['cases'])
     (output / 'report.json').write_text(json.dumps(report, indent=2, ensure_ascii=False)+'\n')
-    (output / 'transcript.json').write_text(json.dumps(transcript, indent=2, ensure_ascii=False)+'\n')
+
     lines = ['# Codex Footprint end-to-end report', '', f"Passed: {report['passed']}; Failed: {report['failed']}", '',
              f"Command: `{report['command']}`", '', f"Environment: {report['environment']}", '',
              f"Preconditions: {report['preconditions']}", '', f"Inputs: {report['inputs']}", '']

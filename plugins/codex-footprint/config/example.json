@@ -4,9 +4,9 @@
   "discovery": true,
   "roots": [],
   "monitor": {
-    "interval_seconds": 2,
+    "interval_seconds": 0.5,
     "refresh_seconds": 60,
-    "slice_entries": 1000,
+    "slice_entries": 5000,
     "slice_seconds": 0.05,
     "autostart": true
   },

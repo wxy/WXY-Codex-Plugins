@@ -1,6 +1,6 @@
 {
   "name": "codex-footprint",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Independent developer plugin for Codex. Monitor development storage growth locally; observe, explain and recommend without deletion.",
   "author": {
     "name": "Xingyu Wang"

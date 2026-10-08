@@ -36,6 +36,13 @@ def main():
     worker.add_argument('--max-ticks',type=int)
     sub.add_parser('analyze-history')
     sub.add_parser('test-notification')
+    daily=sub.add_parser('daily-report')
+    daily.add_argument('--day')
+    sub.add_parser('dashboard')
+    panel=sub.add_parser('panel')
+    panel.add_argument('--port',type=int,default=8766)
+    for name in ('service-plan','install-service','remove-service','supervise'):
+        sub.add_parser(name)
     alerts = sub.add_parser('alerts')
     alerts.add_argument('--ack')
     sub.add_parser('hook')
@@ -57,6 +64,18 @@ def main():
             print(f'codex-footprint: observation skipped ({type(exc).__name__}: {exc})',file=sys.stderr)
         return 0  # No stdout, decision, permission rewrite, or exit 2.
     try:
+        if command in ('service-plan','install-service','remove-service','supervise'):
+            from . import supervisor,monitor
+            if command=='service-plan':value=supervisor.plan(monitor.load())
+            elif command=='install-service':value=supervisor.install(monitor.load())
+            elif command=='remove-service':value=supervisor.remove(monitor.load())
+            else:value=supervisor.supervise()
+            print(json.dumps(value,indent=2,ensure_ascii=False));return 0
+        if command=='panel':
+            if not 0<=args['port']<=65535:raise ValueError('Invalid panel port')
+            from .panel import serve
+            from .monitor import load
+            serve(load(),args['port']);return 0
         if command in ('enable','disable','tick','worker'):
             from . import monitor
             if command=='enable': value=monitor.enable(args['root'],not args['no_defaults'],not args['no_start'],args['notifications'])

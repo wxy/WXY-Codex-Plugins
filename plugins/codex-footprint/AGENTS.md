@@ -1,7 +1,7 @@
 # Codex Footprint development
 
 - Read `docs/product-scope.md`, `docs/v1-scope.md` and `docs/distribution.md` before changing product behavior. Two core goals: global post-enable monitoring with meaningful alerts; explicit historical occupancy analysis including pre-enable artifacts. Personal local use, honest coverage and low overhead take priority.
-- Default to black-box end-to-end tests. Leave replayable reports, logs and exact commands/inputs/environment. If unit tests are truly needed, enumerate failure modes and write those tests before implementation.
+- Default to black-box end-to-end tests. Retain replayable reports with exact commands, inputs, environment and actual results. Remove all test process files, full logs, databases and browser artifacts; never add them to Git. If unit tests are truly needed, enumerate failure modes and write those tests before implementation.
 - Never add automatic deletion, cleanup execution, prompt/command/transcript retention, cloud uploads or whole-home/disk scanning as a routine implementation choice.
 - Global discovery/background observation is an approved product target, not permission for repeated synchronous full-disk walks in hooks. Use shared machine state, bounded fair work and explicit coverage. Detailed historical reconstruction requires the user's explicit analysis request; reading relevant historical records does not authorize raw content retention.
 - Preserve coverage and attribution distinctions: partial scans give unknown growth; hook correlation is not process ownership; first observations are not retroactive growth evidence.
