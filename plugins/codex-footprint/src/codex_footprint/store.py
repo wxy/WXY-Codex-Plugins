@@ -63,10 +63,10 @@ class Store:
                               (event_id,self.config['scope'],json.dumps(snapshot)))
                 snapshot['id'] = cursor.lastrowid
             retention = self.config['retention']
-            self.db.execute('DELETE FROM snapshots WHERE id NOT IN (SELECT id FROM snapshots ORDER BY id DESC LIMIT ?)',
-                            (retention['max_snapshots'],))
-            # Keep event rows referenced by a retained snapshot, within the max of both limits.
-            self.db.execute('DELETE FROM events WHERE id NOT IN (SELECT id FROM events ORDER BY id DESC LIMIT ?) AND id NOT IN (SELECT event_id FROM snapshots)',
+            # Prune dependent snapshots first so both caps hold without dangling event links.
+            self.db.execute('DELETE FROM snapshots WHERE id NOT IN (SELECT id FROM snapshots ORDER BY id DESC LIMIT ?) OR event_id NOT IN (SELECT id FROM events ORDER BY id DESC LIMIT ?)',
+                            (retention['max_snapshots'], retention['max_events']))
+            self.db.execute('DELETE FROM events WHERE id NOT IN (SELECT id FROM events ORDER BY id DESC LIMIT ?)',
                             (retention['max_events'],))
         return snapshot
 

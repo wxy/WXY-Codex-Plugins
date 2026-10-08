@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -326,6 +327,41 @@ def main():
                 assert status['snapshot_count'] <= 4 and status['event_count'] <= 6
                 return status
             case('Bounded history retention', retention)
+
+            def interleaved_retention():
+                evidence = []
+                events = ('SessionStart', 'SessionEnd', 'SessionStart', 'SessionEnd',
+                          'Interrupt', 'SessionEnd', 'SessionStart', 'SessionStart')
+                for max_snapshots, max_events in ((2, 2), (2, 4), (4, 4)):
+                    state = fixture / f'retention-{max_snapshots}-{max_events}'
+                    path = fixture / f'retention-{max_snapshots}-{max_events}.json'
+                    settings = dict(config, retention={'max_snapshots': max_snapshots, 'max_events': max_events})
+                    path.write_text(json.dumps(settings))
+                    isolated = dict(env, CODEX_FOOTPRINT_DATA=str(state), CODEX_FOOTPRINT_CONFIG=str(path))
+                    seen, scanned = [], []
+                    for index, event in enumerate(events):
+                        turn = f'event-{index}'
+                        payload = {'hook_event_name': event, 'cwd': str(root),
+                                   'session_id': 'retention-session', 'turn_id': turn}
+                        proc = run('hook', input=json.dumps(payload), custom_env=isolated)
+                        assert proc.stdout == '' and proc.stderr == '', proc
+                        seen.append(turn)
+                        if event == 'SessionStart':
+                            scanned.append(turn)
+                        expected_events = seen[-max_events:]
+                        expected_snapshots = [t for t in scanned[-max_snapshots:] if t in expected_events]
+                        with sqlite3.connect(state / 'footprint.sqlite3') as db:
+                            retained_events = [r[0] for r in db.execute('SELECT turn_id FROM events ORDER BY id')]
+                            retained_snapshots = [r[0] for r in db.execute('SELECT e.turn_id FROM snapshots s JOIN events e ON e.id=s.event_id ORDER BY s.id')]
+                            assert retained_events == expected_events, (max_events, event, retained_events)
+                            assert retained_snapshots == expected_snapshots, (event, retained_snapshots)
+                            assert not db.execute('PRAGMA foreign_key_check').fetchall()
+                            assert db.execute('PRAGMA quick_check').fetchone()[0] == 'ok'
+                    evidence.append({'max_snapshots': max_snapshots, 'max_events': max_events,
+                                     'events': list(events), 'checked_after_every_hook': True,
+                                     'latest_events_and_linked_snapshots': 'preserved within both caps'})
+                return evidence
+            case('Interleaved snapshot and metadata hooks enforce both retention caps without dangling links', interleaved_retention)
 
             def local_package():
                 local = json_run('package', '--profile', 'local', '--output', str(fixture / 'local'))
