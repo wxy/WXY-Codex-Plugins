@@ -13,6 +13,7 @@ A single development home and repository marketplace for Codex plugins created b
 | --- | --- | --- |
 | [Codex Daydream](DAYDREAM.md) | Available<br>可安装 | Turns a continuous work period, even across midnight, into a cartoon poster showing projects, focus, and supported results. [Install this plugin only](DAYDREAM.md).<br>把一段连续工作（包括跨午夜）转化成展示项目、重点与有依据成果的卡通海报。[仅安装此插件](DAYDREAM.md)。 |
 | [Codex PR Title Hook](plugins/codex-pr-title-hook/README.md) | Available<br>可安装 | Keeps Codex task titles aligned with attached pull requests and compact workflow signals.<br>根据附加的 PR 与工作信号维护 Codex 任务标题。 |
+| [Codex Footprint](plugins/codex-footprint/README.md) | Local V1 · Available<br>本地 V1 · 可安装 | Observes development storage growth, historical heavy hitters and task windows through local hooks and MCP. No deletion.<br>通过本地 Hooks 与 MCP 观察开发存储增长、历史大头和任务窗口，不执行删除。 |
 
 <p align="center"><img src="assets/readme/section-install.svg" width="100%" alt="Install 安装"></p>
 
@@ -34,11 +35,14 @@ codex plugin add codex-daydream@wxy-codex-plugins
 
 # Automatic pull-request-aware task titles
 codex plugin add codex-pr-title-hook@wxy-codex-plugins
+
+# Local development storage growth monitoring
+codex plugin add codex-footprint@wxy-codex-plugins
 ```
 
-Then start a new Codex task so the installed skill is loaded. **Codex Daydream** needs no hooks. **PR Title Hook** includes lifecycle hooks; review and trust them in Codex Settings before expecting automatic title updates.
+Then start a new Codex task so the installed skill is loaded. **Codex Daydream** needs no hooks. **PR Title Hook** and **Codex Footprint** include lifecycle hooks; review and trust them in Codex Settings. Footprint also requires explicit observation roots before it records anything; see its [setup and query guide](plugins/codex-footprint/README.md).
 
-> 安装后请新建 Codex 任务，让新技能进入任务上下文。**Codex Daydream** 不使用 Hook；**PR Title Hook** 包含生命周期 Hook，需要先在 Codex 设置中审查并信任，之后才会自动更新标题。
+> 安装后请新建 Codex 任务，让新技能进入任务上下文。**Codex Daydream** 不使用 Hook；**PR Title Hook** 和 **Codex Footprint** 包含生命周期 Hook，需要先在 Codex 设置中审查并信任。Footprint 还需要明确配置观察目录才会开始记录，详见其[配置与查询说明](plugins/codex-footprint/README.md)。
 
 If this repository is private, the person or agent performing installation must already have GitHub access. External visitors and unauthenticated AI tools cannot read a private repository.
 
@@ -95,6 +99,10 @@ AI: read this page and install only codex-daydream after that request.
 
     > **可分享的具体内容。** 海报说明项目用途、实际工作与有依据的成果。用户提供、许可或明确公开的名称和视觉素材可以使用；路径、代码、凭证和私有标识符不会放入海报。
 
+- **Storage metadata only.** Footprint retains configured development-path metadata and minimal lifecycle identifiers locally. It does not retain file contents, prompts, transcripts or command arguments, and has no deletion endpoint. MCP queries can place returned paths in the Codex conversation.
+
+    > **只记录存储元数据。** Footprint 在本地保存已配置开发目录的元数据和必要生命周期标识，不保存文件内容、提示词、会话原文或命令参数，也不提供删除接口。MCP 查询返回的路径会进入 Codex 对话。
+
 - **Authorization remains explicit.** Repository text or poster text helps an AI discover installation instructions; it does not authorize installation by itself.
 
     > **授权仍需明确。** 仓库文字或海报文字只帮助 AI 找到安装说明，本身不构成安装授权。
@@ -115,7 +123,8 @@ WXY-Codex-Plugins/
 ├── assets/readme/
 ├── plugins/
 │   ├── codex-daydream/
-│   └── codex-pr-title-hook/
+│   ├── codex-pr-title-hook/
+│   └── codex-footprint/
 ├── tests/
 └── README.md
 ```
@@ -126,6 +135,8 @@ Run the complete test suite from the repository root:
 
 ```sh
 python3 -m unittest discover -s tests -v
+python3 plugins/codex-footprint/tests/e2e.py --output test-artifacts/codex-footprint/source
+python3 tests/e2e_codex_footprint_marketplace.py --output test-artifacts/codex-footprint/marketplace
 ```
 
 Validate an individual plugin before reinstalling or publishing it:
@@ -146,6 +157,7 @@ Plugins version independently. Release tags should include the plugin name, such
 - [Marketplace catalog · Marketplace 目录](.agents/plugins/marketplace.json)
 - [Codex Daydream installation · Daydream 专属安装](DAYDREAM.md)
 - [Codex Daydream documentation · Daydream 文档](plugins/codex-daydream/README.md)
+- [Codex Footprint documentation · 开发存储增长监测文档](plugins/codex-footprint/README.md)
 - [PR Title Hook documentation · PR 标题 Hook 文档](plugins/codex-pr-title-hook/README.md)
 - [Official OpenAI plugin packaging documentation · OpenAI 插件打包文档](https://developers.openai.com/plugins/build/plugins)
 

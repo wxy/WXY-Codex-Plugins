@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Codex Footprint storage growth">
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#183247"/>
+  <path d="M28 82h72M28 65h38M28 99h72" fill="none" stroke="#93B6CC" stroke-width="8" stroke-linecap="round"/>
+  <path d="m30 49 21-13 17 8 31-25m-18 0h18v18" fill="none" stroke="#69D7B2" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,16 @@
+[project]
+name = "codex-footprint"
+version = "0.1.0"
+description = "Independent development storage growth monitor for Codex"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+codex-footprint = "codex_footprint.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
