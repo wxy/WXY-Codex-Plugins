@@ -22,3 +22,9 @@ Notification delivery uses the documented macOS native notification command. Sys
 ## Evidence
 
 Each E2E runner writes `report.json`, `report.md`, and a bounded transport/process transcript. Real-host acceptance records host version, source/installed hashes, event IDs, baseline/latest IDs, measured growth, native-delivery outcome and any remaining gaps. Fixture notifications are separate from production findings and do not fabricate real session evidence.
+
+## Delivery status — 2026-10-08
+
+A/B/C runtime and automated scenarios are implemented in 0.2.0. Three installed-copy suites passed: 19 legacy + 15 global + 13 edge cases (47 total). Existing 54 WXY regressions also passed. Personal installation matches 41 tracked plugin files, keeps the seven trusted hook definitions unchanged, preserves old hook paths/other plugins and enables the shared observer. Real events from two local Codex chats have reached the same worker/database. A labeled native notification probe was accepted by macOS and explicitly confirmed visible by the user.
+
+D is partial real-host acceptance: first large-machine baselines are still building; actual production-growth notification visibility, complete cross-project baselines and sustained overhead remain open. No full investigation of private historical sessions was started implicitly. Source test fixture history does prove the pre-enable flow; the user's own history waits for an explicit analysis request. A fresh chat is needed to load the new MCP tool set after upgrade.
