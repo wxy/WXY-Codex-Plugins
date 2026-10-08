@@ -1,4 +1,4 @@
-# Architecture — 0.4.0
+# Architecture — 0.4.1
 
 An independent local Codex-specific development storage growth monitor. [Product scope](product-scope.md) defines global monitoring/alerts and explicit pre-enable historical occupancy analysis. Personal use takes priority; no deletion, telemetry or remote service exists.
 
@@ -82,3 +82,5 @@ The hook shell checks that the cached entrypoint exists and tolerates Python sta
 ## Native event scheduling
 
 Start the stream before baseline measurement. Coalesce paths to watched roots and ignore excluded names/state. Only dirty roots, first baselines or 30-minute reconciliation become eligible; lifecycle activity prioritizes work without forcing quiet-root walks. Changes arriving during measurement remain dirty for a follow-up. Scope/stream restarts conservatively remeasure all roots. MustScanSubDirs, dropped/wrapped IDs, root changes and mount transitions invalidate all watched hints. Unsupported platforms, initialization failure or unhealthy streams fall back to existing polling, with retry and explicit status. Traversal budgets still bound measurements, not total process CPU or detection latency. See [Apple FSEvents guidance](https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/FSEvents_ProgGuide/UsingtheFSEventsFramework/UsingtheFSEventsFramework.html).
+
+On native startup, reserve descriptor headroom by raising only the worker process soft limit within its inherited hard ceiling, capped at 8,192. This accommodates WatchRoot root/ancestor descriptors under launchd defaults. No host/system or hard resource limit is changed; conservative traversal concurrency was selected before this raise. A hard ceiling or refused raise still permits honest polling fallback. Stream status includes the actual soft limit and any budget error.

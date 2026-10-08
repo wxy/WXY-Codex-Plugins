@@ -12,12 +12,12 @@ import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 
-ENTRY=Path(__file__).resolve().parents[1]/'scripts/codex_footprint.py'
+ENTRY=Path(os.environ.get('CODEX_FOOTPRINT_TEST_ENTRY',str(Path(__file__).resolve().parents[1]/'scripts/codex_footprint.py'))).resolve()
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--output',required=True);ap.add_argument('--case');args=ap.parse_args()
     out=Path(args.output).resolve();out.mkdir(parents=True,exist_ok=True)
-    report={'command':[sys.executable,str(Path(__file__).resolve()),'--output',str(out)],'environment':{'python':sys.version,'platform':sys.platform},'preconditions':'macOS public FSEvents for native cases; local filesystem, subprocesses, loopback; no personal state or native notifications','inputs':'Generated temporary Unicode project roots, external writes/rename/delete, excluded directories, eight days of minute capacity samples and concurrent hook clients','cases':[]}
+    report={'command':[sys.executable,str(Path(__file__).resolve()),'--output',str(out)],'environment':{'python':sys.version,'platform':sys.platform},'preconditions':'macOS public FSEvents for native cases; local filesystem, subprocesses, loopback; no personal state or native notifications','inputs':'Generated temporary Unicode project roots, external writes/rename/delete, excluded directories, eight days of minute capacity samples and concurrent hook clients','runtime_entry':str(ENTRY),'cases':[]}
     if args.case:report['command']+=['--case',args.case]
     def case(name,fn):
         if args.case and args.case!=name:return
@@ -41,8 +41,11 @@ def main():
                     if value:return value
                     time.sleep(.1)
                 raise AssertionError('condition not reached within %ss'%seconds)
-            def start():
-                p=subprocess.Popen([sys.executable,str(ENTRY),'worker'],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);processes.append(p)
+            def start(descriptor_limit=None,hard_descriptor_limit=None):
+                def restrict():
+                    import resource
+                    resource.setrlimit(resource.RLIMIT_NOFILE,(descriptor_limit,hard_descriptor_limit or resource.getrlimit(resource.RLIMIT_NOFILE)[1]))
+                p=subprocess.Popen([sys.executable,str(ENTRY),'worker'],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,preexec_fn=restrict if descriptor_limit else None);processes.append(p)
                 wait(lambda:run('status')['worker']['running']);return p
             def root(path=work):return next((r for r in run('status')['roots'] if r['path']==str(path)),{})
             def count(path=work):
@@ -77,6 +80,29 @@ def main():
         assert run('status')['history_analysis_count']==0
         return {'native_stream':s,'quiet_and_excluded_paths_idle':True,'external_growth_detected':True,'burst_coalesced':True}
     case('native_idle_external_growth_exclusions_burst',native)
+    def descriptors(tmp,work,state,env,run,cfg,wait,start,root,count,write):
+        roots=[work]
+        for i in range(59):
+            p=tmp/('root-%02d'%i);p.mkdir();roots.append(p)
+        cfg(roots=[{'path':str(p)} for p in roots],monitor={'event_backend':'auto','reconcile_seconds':3600,'interval_seconds':.1,'refresh_seconds':.2})
+        start(descriptor_limit=256)
+        wait(lambda:root().get('complete'))
+        status=run('status')['worker']['progress']['filesystem_events']
+        assert status['backend']=='fsevents' and status['healthy'] and status['watched_roots']==60,status
+        write(roots[-1]/'external-growth',16384);wait(lambda:root(roots[-1]).get('allocated_bytes',0)>=16384)
+        return {'inherited_soft_descriptor_limit':256,'native_watch_roots':60,'external_growth_detected':True,'stream':status}
+    case('native_many_roots_low_descriptor_limit',descriptors)
+    def hard_descriptors(tmp,work,state,env,run,cfg,wait,start,root,count,write):
+        roots=[work]
+        for i in range(59):
+            p=tmp/('root-%02d'%i);p.mkdir();roots.append(p)
+        cfg(roots=[{'path':str(p)} for p in roots],monitor={'event_backend':'auto','reconcile_seconds':3600,'interval_seconds':.1,'refresh_seconds':.2})
+        start(descriptor_limit=256,hard_descriptor_limit=256);wait(lambda:root().get('complete'))
+        status=run('status')['worker']['progress']['filesystem_events']
+        assert status['backend']=='polling' and not status['healthy'],status
+        write(work/'fallback-growth',16384);wait(lambda:root().get('allocated_bytes',0)>=16384)
+        return {'hard_descriptor_limit':256,'fallback':'polling','external_growth_detected':True}
+    case('native_hard_descriptor_ceiling_polling',hard_descriptors)
     def scope(tmp,work,state,env,run,cfg,wait,start,root,count,write):
         cfg(monitor={'event_backend':'auto','reconcile_seconds':3600,'interval_seconds':.1,'refresh_seconds':.2});start();wait(lambda:root().get('complete'))
         new=tmp/'another';new.mkdir();write(new/'artifact',4096)

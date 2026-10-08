@@ -1,4 +1,4 @@
-# Global configuration — 0.4.0
+# Global configuration — 0.4.1
 
 Enable once per machine, independently of chats/projects. Missing configuration means inactive hooks. Historical investigation can still run on explicit request while monitoring is off.
 

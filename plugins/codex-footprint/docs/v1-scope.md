@@ -1,4 +1,4 @@
-# Implementation and acceptance boundary — 0.4.0
+# Implementation and acceptance boundary — 0.4.1
 
 [Product scope](product-scope.md) remains the target contract. [Implementation plan](implementation-plan.md) orders A → B → C → D. The two functions now have a working local implementation; automated results and real host acceptance must be reported separately.
 

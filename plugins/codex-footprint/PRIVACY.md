@@ -1,4 +1,4 @@
-# Local data and privacy — 0.4.0
+# Local data and privacy — 0.4.1
 
 Codex Footprint is an independent developer plugin for Codex. It has no remote network client, telemetry, account, cloud synchronization or deletion endpoint. A read-only server binds only to 127.0.0.1, serving retained metadata and packaged UI; local applications can read it. Host/Origin validation and CSP reject browser cross-origin reads. It is not a remote service or authentication boundary against other local processes.
 

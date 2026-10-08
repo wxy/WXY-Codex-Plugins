@@ -12,13 +12,23 @@ class NativeStream:
     def __init__(self, paths, state, exclusions):
         self.paths=tuple(paths);self.root_set=set(paths);self.state=str(state);self.exclusions=set(exclusions)
         self.dirty=set();self.lock=threading.Lock();self.stop=threading.Event();self.ready=threading.Event()
-        self.error=None;self.healthy=False;self.losses=0;self.batches=0
+        self.error=None;self.healthy=False;self.losses=0;self.batches=0;self.descriptor_limit=None;self.descriptor_error=None
         self.thread=threading.Thread(target=self.run,daemon=True,name='footprint-fsevents');self.thread.start()
         if not self.ready.wait(2):self.error='native_start_timeout';self.close()
 
     def run(self):
         stream=None;array=None;strings=[];started=False;loop=None;mode=None
         try:
+            # WatchRoot opens root/ancestor descriptors. launchd may inherit a 256 soft limit.
+            # Raise only this process soft allowance, never the hard/system limits.
+            import resource
+            try:
+                soft,hard=resource.getrlimit(resource.RLIMIT_NOFILE)
+                target=min(8192,max(1024,len(self.paths)*8+1024))
+                if hard!=resource.RLIM_INFINITY:target=min(target,hard)
+                if soft!=resource.RLIM_INFINITY and soft<target:resource.setrlimit(resource.RLIMIT_NOFILE,(target,hard))
+                self.descriptor_limit=resource.getrlimit(resource.RLIMIT_NOFILE)[0]
+            except (OSError,ValueError) as exc:self.descriptor_error=type(exc).__name__+': '+str(exc)[:160]
             cf=C.CDLL('/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation')
             fs=C.CDLL('/System/Library/Frameworks/CoreServices.framework/CoreServices')
             callback_type=C.CFUNCTYPE(None,C.c_void_p,C.c_void_p,C.c_size_t,C.c_void_p,C.POINTER(C.c_uint32),C.POINTER(C.c_uint64))
@@ -108,6 +118,6 @@ class Watcher:
         return {'backend':'fsevents' if healthy else 'polling','healthy':healthy,
                 'fallback_reason':None if healthy else (self.native.error if self.native and self.native.error else self.reason),
                 'watched_roots':len(self.native.paths) if healthy else 0,'event_batches':self.native.batches if self.native else 0,
-                'loss_rescans':self.native.losses if self.native else 0,'scope':'changed monitored roots; bounded full-root measurement, no per-file delta cache or persistent replay'}
+                'loss_rescans':self.native.losses if self.native else 0,'descriptor_soft_limit':self.native.descriptor_limit if self.native else None,'descriptor_budget_error':self.native.descriptor_error if self.native else None,'scope':'changed monitored roots; bounded full-root measurement, no per-file delta cache or persistent replay'}
     def close(self):
         if self.native:self.native.close();self.native=None

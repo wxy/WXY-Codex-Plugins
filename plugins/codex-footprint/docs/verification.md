@@ -1,4 +1,4 @@
-# Verification and replay — 0.4.0
+# Verification and replay — 0.4.1
 
 ## Test-first black-box suites
 
