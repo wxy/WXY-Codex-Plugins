@@ -59,10 +59,11 @@ def main():
         try:
             raw = sys.stdin.buffer.read(1024*1024+1)
             if len(raw)>1024*1024: raise ValueError('Hook input exceeds 1 MiB')
-            handle_hook(json.loads(raw))
+            notice=handle_hook(json.loads(raw))
+            if notice:print(json.dumps(notice,ensure_ascii=False))
         except Exception as exc:
             print(f'codex-footprint: observation skipped ({type(exc).__name__}: {exc})',file=sys.stderr)
-        return 0  # No stdout, decision, permission rewrite, or exit 2.
+        return 0  # Context/warning only; no decision, permission rewrite, or exit 2.
     try:
         if command in ('service-plan','install-service','remove-service','supervise'):
             from . import supervisor,monitor

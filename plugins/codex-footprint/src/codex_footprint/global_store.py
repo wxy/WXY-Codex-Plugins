@@ -37,10 +37,18 @@ class GlobalStore:
                     initial.close();temporary.unlink(missing_ok=True)
             self.db=sqlite3.connect(self.path,timeout=3)
             if self.db.execute('PRAGMA user_version').fetchone()[0]!=1:self.close();raise ValueError('Unsupported global history schema')
+            migrate=not self.db.execute("SELECT 1 FROM sqlite_master WHERE name='volume_minutes'").fetchone()
             self.db.executescript('''
                 CREATE TABLE IF NOT EXISTS daily_roots(day TEXT NOT NULL,path TEXT NOT NULL,first_payload TEXT NOT NULL,last_payload TEXT NOT NULL,PRIMARY KEY(day,path));
                 CREATE TABLE IF NOT EXISTS daily_reports(day TEXT PRIMARY KEY,payload TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS volume_minutes(device INTEGER NOT NULL,bucket INTEGER NOT NULL,ts REAL NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(device,bucket));
+                CREATE INDEX IF NOT EXISTS volume_minutes_time ON volume_minutes(ts);
             ''')
+            if migrate:
+                for ts,payload in self.db.execute('SELECT ts,payload FROM volume_history ORDER BY id').fetchall():
+                    row=json.loads(payload)
+                    self.db.execute('INSERT OR REPLACE INTO volume_minutes VALUES(?,?,?,?)',(row['device'],int(ts//60),ts,payload))
+                self.db.commit()
         else:
             self.db=sqlite3.connect(self.path.as_uri()+'?mode=ro',uri=True,timeout=3)
             if self.db.execute('PRAGMA user_version').fetchone()[0]!=1: self.close(); raise ValueError('Unsupported global history schema')
@@ -58,9 +66,14 @@ class GlobalStore:
         return self.db.execute('SELECT count(*) FROM '+table).fetchone()[0] if self.db else 0
     def alerts(self):
         if not self.db:return []
-        return [dict(json.loads(p),id=i,acknowledged=bool(a)) for i,a,p in self.db.execute('SELECT id,acknowledged,payload FROM alerts ORDER BY id DESC LIMIT 100')]
+        from .codex_notices import receipt
+        r=receipt(self.path.parent)
+        return [dict(json.loads(p),id=i,acknowledged=bool(a),codex_delivery={'status':'emitted_to_hook_visibility_unverified' if i<=r['last_id'] else 'pending_active_chat','visible':None if i<=r['last_id'] else False}) for i,a,p in self.db.execute('SELECT id,acknowledged,payload FROM alerts ORDER BY id DESC LIMIT 100')]
     def prune(self,limit=500,event_limit=5000):
         for table in ('observations','volume_history','alerts','history_runs'):
             self.db.execute('DELETE FROM '+table+' WHERE id NOT IN (SELECT id FROM '+table+' ORDER BY id DESC LIMIT ?)',(limit,))
         self.db.execute('DELETE FROM events WHERE id NOT IN (SELECT id FROM events ORDER BY ts DESC LIMIT ?)',(event_limit,))
+        self.db.execute('DELETE FROM volume_minutes WHERE ts<?',(time.time()-7*86400,))
+        if self.db.execute('SELECT count(*) FROM volume_minutes').fetchone()[0]>100000:
+            self.db.execute('DELETE FROM volume_minutes WHERE rowid NOT IN (SELECT rowid FROM volume_minutes ORDER BY ts DESC LIMIT 100000)')
         self.db.commit()

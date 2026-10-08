@@ -1,4 +1,4 @@
-# Local data and privacy — 0.3.0
+# Local data and privacy — 0.4.0
 
 Codex Footprint is an independent developer plugin for Codex. It has no remote network client, telemetry, account, cloud synchronization or deletion endpoint. A read-only server binds only to 127.0.0.1, serving retained metadata and packaged UI; local applications can read it. Host/Origin validation and CSP reject browser cross-origin reads. It is not a remote service or authentication boundary against other local processes.
 
@@ -15,3 +15,5 @@ A detached local worker runs after enablement/trusted hooks. Global disable or t
 Meaningful findings may send a macOS desktop notification with signal/bytes and a query prompt; paths are kept in the inbox rather than notification text. OS settings can suppress display. An optional inbox backend avoids native notification commands. MCP returns selected metadata into Codex when called; the conversation may therefore contain paths/IDs. The plugin itself does not upload them. Review any report before sharing it.
 
 Daily summaries retain first/last complete metadata endpoints and derived reports for 90 days, separately from snapshot pruning. Generating a daily report does not read historical session records or scan artifacts. A separately configured Codex scheduled chat can read/report these selected results at 21:00; those results then enter the Codex conversation under its normal data handling.
+
+Public macOS FSEvents paths are used transiently to mark monitored roots dirty, filtered for excluded names/state and never stored as raw event history. Seven-day per-volume minute capacity records have a 100,000-row hard cap. Trusted active-chat hooks can submit up to three bounded finding summaries (including paths) to Codex context, globally deduplicated by a small local emission receipt; `notifications.codex_context=false` disables this independently. Emission is not proof of user-visible delivery or acknowledgement.

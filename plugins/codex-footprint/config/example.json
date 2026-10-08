@@ -8,13 +8,16 @@
     "refresh_seconds": 60,
     "slice_entries": 5000,
     "slice_seconds": 0.02,
-    "autostart": true
+    "autostart": true,
+    "event_backend": "auto",
+    "reconcile_seconds": 1800
   },
   "notifications": {
     "backend": "desktop",
     "cooldown_seconds": 3600,
     "material_growth_bytes": 268435456,
-    "minimum_free_bytes": 10737418240
+    "minimum_free_bytes": 10737418240,
+    "codex_context": true
   },
   "history": {
     "max_files": 2000,

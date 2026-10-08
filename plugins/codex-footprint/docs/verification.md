@@ -1,4 +1,4 @@
-# Verification and replay — 0.3.0
+# Verification and replay — 0.4.0
 
 ## Test-first black-box suites
 
@@ -9,6 +9,7 @@ python3 tests/e2e.py --output artifacts/legacy
 python3 tests/e2e_global.py --output artifacts/global
 python3 tests/e2e_global_edges.py --output artifacts/edges
 python3 tests/e2e_monitor_dashboard.py --output artifacts/dashboard
+python3 tests/e2e_event_monitor.py --output artifacts/events  # macOS only for native cases
 ```
 
 Each suite retains reports only with commands, environment/prerequisites, generated-input recipes, outcomes and necessary diagnostics. Full process/transport logs are not retained. Temporary fixtures are removed; checked-in runners recreate them. Fixtures use lower thresholds and real external writer processes, not synthetic byte counters. No native notifications run in fixture suites.
@@ -25,14 +26,14 @@ From WXY repository root, with a compatible Codex CLI available:
 python3 tests/e2e_codex_footprint_marketplace.py --output test-artifacts/codex-footprint/marketplace
 ```
 
-Creates/removes a disposable Codex profile, installs the actual WXY entry, compares source hashes, confirms unconfigured installation stays inactive and runs all four suites from its installed cache. Reports include CLI version/commands/install receipt/source HEAD. No personal settings, hook trust or model calls are changed.
+Creates/removes a disposable Codex profile, installs the actual WXY entry, compares source hashes, confirms unconfigured installation stays inactive and runs all five suites from its installed cache. Reports include CLI version/commands/install receipt/source HEAD. No personal settings, hook trust or model calls are changed.
 
 ## Real Desktop acceptance
 
 1. Install from WXY, review/trust hooks and enable shared global observation. Record source/cache hashes, host version and actual config/state paths.
 2. In actual chats from different projects, collect real host lifecycle IDs and verify they reach the common inventory. Synthetic fixture events cannot substitute for these.
 3. Allow a baseline to finish. Request an external-tool artifact and inspect complete comparable endpoints, growth, alert evidence and overlapping session limitations. Never attribute whole-volume changes exclusively to the task.
-4. Verify a meaningful notification is actually visible. `test-notification` is a labeled delivery probe, not a production growth finding; command acceptance is insufficient proof of visibility. Retain a screenshot/AX observation or user confirmation separately.
+4. Verify a meaningful notification is actually visible. `test-notification` is a labeled delivery probe, not a production growth finding; command acceptance is insufficient proof of visibility. Retain the result and method in the report; remove test screenshots/AX process files after recording acceptance.
 5. Query status/report/alerts/explain/review plan. Confirm no cleanup executed. Explicitly request historical analysis only when wanted; pre-enable fixture coverage is distinct from investigation of the user's whole history.
 6. Disable and confirm background work stops; re-enable preserves state. Record real first-baseline completion and overhead rather than extrapolating fixture timings.
 

@@ -62,7 +62,7 @@ def main():
             digests={}
             for relative in ['.codex-plugin/plugin.json','.mcp.json','hooks/hooks.json','scripts/codex_footprint.py','scripts/update_plugin.py',
                              'src/codex_footprint/observer.py','src/codex_footprint/engine.py','src/codex_footprint/service.py',
-                             'src/codex_footprint/monitor.py','src/codex_footprint/global_store.py','src/codex_footprint/inventory.py','src/codex_footprint/historical.py','src/codex_footprint/summaries.py','src/codex_footprint/panel.py','src/codex_footprint/supervisor.py','assets/dashboard.html']:
+                             'src/codex_footprint/monitor.py','src/codex_footprint/global_store.py','src/codex_footprint/inventory.py','src/codex_footprint/historical.py','src/codex_footprint/summaries.py','src/codex_footprint/panel.py','src/codex_footprint/supervisor.py','src/codex_footprint/filesystem_events.py','src/codex_footprint/codex_notices.py','src/codex_footprint/chart_history.py','assets/dashboard.html']:
                 a=hashlib.sha256((PLUGIN/relative).read_bytes()).hexdigest()
                 b=hashlib.sha256((cache/relative).read_bytes()).hexdigest()
                 assert a==b, relative
@@ -75,7 +75,7 @@ def main():
             core=json.loads((output/'installed-e2e/report.json').read_text())
             assert core['failed']==0 and core['passed']>=19
             report['installed_core_results']={'passed':core['passed'],'failed':core['failed']}
-            for suite in ('e2e_global','e2e_global_edges','e2e_monitor_dashboard'):
+            for suite in ('e2e_global','e2e_global_edges','e2e_monitor_dashboard','e2e_event_monitor'):
                 run([sys.executable,str(cache/('tests/'+suite+'.py')),'--output',str(output/suite)],timeout=90)
                 result=json.loads((output/suite/'report.json').read_text())
                 assert result.get('failed',0)==0 and result.get('result','pass')=='pass'

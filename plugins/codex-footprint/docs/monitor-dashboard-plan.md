@@ -14,7 +14,7 @@ Confirmed 2026-10-08: whole-disk/historical investigations remain explicitly req
 
 ## Notification boundary
 
-Official desktop documentation describes chat completion, Activity and scheduled-task results. No documented arbitrary third-party background notification-center injection has been established. Use Codex scheduled results for the daily reminder; retain an inbox/panel and the existing system adapter for immediate anomaly delivery. Do not label an accepted OS command as a visible Codex notification. Do not edit application internals or inject unattended model turns.
+Official desktop documentation describes chat completion, Activity and scheduled-task results. No documented arbitrary third-party background notification-center injection has been established. Use Codex scheduled results for the daily reminder. Supported trusted hooks can return a nonblocking warning and bounded additional context on the next active chat operation; this is not arbitrary notification-center injection and does not wake idle chats. Retain an inbox/panel and the system adapter for idle delivery. See [hook outputs](https://learn.chatgpt.com/docs/hooks). Do not label an accepted OS command as a visible Codex notification. Do not edit application internals or inject unattended model turns.
 
 ## Acceptance and retention
 

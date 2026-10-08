@@ -16,8 +16,8 @@ from .config import data_directory, OBSERVER, THRESHOLDS, RETENTION, number
 from .global_store import GlobalStore
 from .inventory import Cycle
 
-MONITOR={'interval_seconds':2,'refresh_seconds':60,'slice_entries':5000,'slice_seconds':0.02,'autostart':True}
-NOTIFICATIONS={'backend':'desktop','cooldown_seconds':3600,'material_growth_bytes':256*1024**2,'minimum_free_bytes':10*1024**3}
+MONITOR={'interval_seconds':2,'refresh_seconds':60,'slice_entries':5000,'slice_seconds':0.02,'autostart':True,'event_backend':'auto','reconcile_seconds':1800}
+NOTIFICATIONS={'backend':'desktop','cooldown_seconds':3600,'material_growth_bytes':256*1024**2,'minimum_free_bytes':10*1024**3,'codex_context':True}
 HISTORY={'max_files':2000,'max_records':100000,'max_seconds':10,'max_entries':100000}
 
 
@@ -50,8 +50,11 @@ def normalize(raw,data,path):
     m=config['monitor']; number(m['interval_seconds'],'interval_seconds',0.01,3600); number(m['refresh_seconds'],'refresh_seconds',0,86400)
     number(m['slice_entries'],'slice_entries',1,10000,True); number(m['slice_seconds'],'slice_seconds',0.001,1)
     if type(m['autostart']) is not bool:raise ValueError('autostart must be boolean')
+    if m['event_backend'] not in ('auto','polling'):raise ValueError('event_backend must be auto or polling')
+    number(m['reconcile_seconds'],'reconcile_seconds',1,86400)
     n=config['notifications']
     if n['backend'] not in ('desktop','inbox'):raise ValueError('notifications backend must be desktop or inbox')
+    if type(n['codex_context']) is not bool:raise ValueError('codex_context must be boolean')
     number(n['minimum_free_bytes'],'minimum_free_bytes',1,10**15,True)
     number(n['cooldown_seconds'],'cooldown_seconds',0,604800); number(n['material_growth_bytes'],'material_growth_bytes',1,10**15,True)
     for k,v in config['thresholds'].items():number(v,k,1,10**15,k!='rapid_bytes_per_second')
@@ -260,8 +263,11 @@ class Runner:
         limit=resource.getrlimit(resource.RLIMIT_NOFILE)[0]
         self.max_active=max(1,min(8,(int(limit)-64)//65)) if limit>0 else 2
         self.discovery_paths=[];self.discovery_at=0;self.hot_until={}
+        from .filesystem_events import Watcher
+        self.watcher=Watcher();self.dirty=set()
     def close(self):
         for cycle in self.cycles.values():cycle.close()
+        self.watcher.close()
     def step(self):
         config=load();self.config=config
         if not config['enabled'] or host_disabled() or config.get('version')!=2:return {'enabled':False}
@@ -269,7 +275,8 @@ class Runner:
         exclusions=tuple(sorted(config['exclude_names']))
         request=data/'refresh.request'
         if exclusions!=self.exclusions or request.exists():
-            self.close();self.cycles.clear();self.completed.clear();self.exclusions=exclusions
+            for cycle in self.cycles.values():cycle.close()
+            self.cycles.clear();self.completed.clear();self.exclusions=exclusions
             request.unlink(missing_ok=True)
         with GlobalStore(data,True) as store:
             spool=data/'spool'
@@ -302,6 +309,9 @@ class Runner:
             # Compare pre-parsed path components, avoiding quadratic Path/parents construction every tick.
             all_parts={parts[p] for p in paths}
             paths=[p for p in paths if not any(parts[p][:n] in all_parts for n in range(1,len(parts[p]))) ]
+            # Listen before baselines, and retain changes received during a scan for a follow-up.
+            self.dirty.update(self.watcher.update(paths,config,self.one_shot));self.dirty.update(self.watcher.drain())
+            self.dirty.intersection_update(paths);event_status=self.watcher.status()
             for (old_path,) in store.db.execute('SELECT path FROM inventory').fetchall():
                 if old_path not in paths:store.db.execute('DELETE FROM inventory WHERE path=?',(old_path,))
             # Excluded names are applied by path boundaries discovered during the walk, not shell patterns.
@@ -318,7 +328,7 @@ class Runner:
             for cwd in self.hot_until:
                 cwd_parts=Path(cwd).parts
                 hot_ancestors.update(cwd_parts[:n] for n in range(1,len(cwd_parts)+1))
-            hot={path for path in paths if parts[path] in hot_ancestors}
+            hot={path for path in paths if parts[path] in hot_ancestors}|self.dirty
             # Recent lifecycle work gets the first allocation; every active root keeps a fair allocation.
             ordered.sort(key=lambda p:p not in hot)
             from .summaries import remember
@@ -328,8 +338,13 @@ class Runner:
                 for path in ordered:
                     if path in finished_this_step or (self.one_shot and path in self.completed):continue
                     pause=min(config['monitor']['refresh_seconds'],2) if path in hot else config['monitor']['refresh_seconds']
-                    if path not in self.cycles and len(self.cycles)<self.max_active and time.time()-self.completed.get(path,0)>=pause:
+                    if event_status['healthy']:
+                        elapsed=time.time()-self.completed.get(path,0)
+                        due=path not in self.completed or elapsed>=config['monitor']['reconcile_seconds'] or (path in self.dirty and elapsed>=min(config['monitor']['refresh_seconds'],2))
+                    else:due=time.time()-self.completed.get(path,0)>=pause
+                    if path not in self.cycles and len(self.cycles)<self.max_active and due:
                         self.cycles[path]=Cycle(path,data,config['exclude_names'])
+                        self.dirty.discard(path)
                     cycle=self.cycles.get(path)
                     if not cycle:continue
                     before=cycle.row['entries_visited']
@@ -363,9 +378,10 @@ class Runner:
                             store.db.execute('INSERT INTO alerts(fingerprint,ts,payload) VALUES(?,?,?)',(fingerprint,time.time(),json.dumps(finding)))
                     store.db.execute('INSERT OR REPLACE INTO volumes VALUES(?,?)',(row['path'],json.dumps(row)))
                     store.db.execute('INSERT INTO volume_history(ts,payload) VALUES(?,?)',(time.time(),json.dumps(row)))
+                    store.db.execute('INSERT OR REPLACE INTO volume_minutes VALUES(?,?,?,?)',(row['device'],int(row['sampled_at']//60),row['sampled_at'],json.dumps(row)))
                 self.last_volume=time.time()
             store.prune(config['retention']['max_snapshots'],config['retention']['max_events'])
-        return {'enabled':True,'roots':len(paths),'active_cycles':len(self.cycles),'completed_roots':len(self.completed),'pending_roots':sum(p not in self.completed for p in paths)}
+        return {'enabled':True,'roots':len(paths),'active_cycles':len(self.cycles),'completed_roots':len(self.completed),'pending_roots':sum(p not in self.completed for p in paths),'filesystem_events':event_status,'dirty_roots':len(self.dirty)}
 
 
 def worker(max_ticks=None):

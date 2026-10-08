@@ -1,4 +1,4 @@
-# Global configuration — 0.3.1
+# Global configuration — 0.4.0
 
 Enable once per machine, independently of chats/projects. Missing configuration means inactive hooks. Historical investigation can still run on explicit request while monitoring is off.
 
@@ -38,10 +38,13 @@ See the disabled `config/example.json`. Roots are absolute/`~` paths; nested pat
 | `enabled` | false in example | Global observation switch |
 | `discovery` | true | Known development roots plus event workspaces |
 | `monitor.interval_seconds` | 2 | Tick pause |
-| `monitor.refresh_seconds` | 60 | Minimum pause between completed root walks |
+| `monitor.refresh_seconds` | 60 | Polling pause; native dirty-root debounce uses at most 2 seconds |
+| `monitor.event_backend` | auto | Public macOS FSEvents when available, otherwise polling; `polling` opts out |
+| `monitor.reconcile_seconds` | 1,800 | Native quiet-root reconciliation interval |
 | `monitor.slice_entries` | 5,000 | Per-tick shared entry budget, reused while time remains |
 | `monitor.slice_seconds` | 0.02 | Metadata traversal time slice |
 | `monitor.autostart` | true | Restart worker on trusted hook |
+| `notifications.codex_context` | true | Nonblocking warning/context on the next active trusted chat hook |
 | `notifications.backend` | desktop | macOS notification adapter or inbox |
 | `notifications.cooldown_seconds` | 3,600 | Minimum re-alert delay |
 | `notifications.material_growth_bytes` | 256 MiB | Material additional occupancy for re-alert |
@@ -66,4 +69,8 @@ The elected worker serves `http://127.0.0.1:8766/`; `dashboard` returns its URL 
 
 `daily-report [--day YYYY-MM-DD]` updates one idempotent daily report from monitor metadata only, including while observation is disabled. Daily first/last complete endpoints survive short snapshot retention for 90 days. Unknown/changed-scope endpoints cannot produce growth. Dates with no records remain empty. The worker prepares today's report at/after 21:00 local time. Configure a separate Codex daily scheduled chat at 21:00 to refresh and report it through Codex Activity; this is not a whole-disk scan. Computer/app availability affects scheduled delivery; there is no promise of delivery while asleep.
 
-Recently hooked project roots receive priority and a two-second minimum refresh pause; cold roots retain the configured pause. A root still needs a complete walk and comparable baseline. Neither the tick pause nor panel refresh is a guaranteed anomaly-detection deadline.
+Native mode schedules first baselines, dirty roots and low-frequency reconciliation; it does not repeatedly walk quiet roots on each chat operation. Polling fallback retains hot-project priority and a two-second minimum refresh pause; cold roots retain the configured pause. A root still needs a complete walk and comparable baseline. Neither the tick pause nor panel refresh is a guaranteed anomaly-detection deadline.
+
+The panel defaults to 24 hours and supports 1 hour/7 days. Capacity history is stored by volume and minute for seven days independently of `retention.max_snapshots` (100,000-row safety cap). Chart points preserve bucket extrema; actual timestamps, GB ticks and first/last recorded delta are shown. Older missing history cannot be backfilled.
+
+`notifications.codex_context=false` disables chat hook notices independently of the OS adapter. Notices use supported `systemMessage`/`additionalContext` outputs and continue the current operation. They are globally deduplicated and do not acknowledge findings. Completely idle chats cannot receive a hook until another operation; OS notifications and the separate 21:00 scheduled summary supplement this boundary.

@@ -9,23 +9,24 @@ from pathlib import Path
 import re
 import threading
 import time
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit,parse_qs
 
 from .global_store import GlobalStore
 
 
-def snapshot(config):
+def snapshot(config,window='24h'):
     from .monitor import status
     result = status(config)
     value = {k: result.get(k) for k in ('worker', 'enabled', 'roots', 'volumes', 'coverage')}
-    value.update(read_only=True, generated_at=time.time(), daily_reports=[], alerts=[], volume_history=[], latest_historical_analysis=None)
+    value.update(read_only=True, generated_at=time.time(), daily_reports=[], alerts=[], volume_history=[], latest_historical_analysis=None, chart_window={"requested_range":window,"samples":0,"resolution_seconds":60})
     with GlobalStore(config['data_dir']) as store:
         if not store.db:
             return value
         value['alerts'] = store.alerts()
         if store.db.execute("SELECT 1 FROM sqlite_master WHERE name='daily_reports'").fetchone():
             value['daily_reports'] = [json.loads(p) for (p,) in store.db.execute('SELECT payload FROM daily_reports ORDER BY day DESC LIMIT 14')]
-        value['volume_history'] = list(reversed([json.loads(p) for (p,) in store.db.execute('SELECT payload FROM volume_history ORDER BY id DESC LIMIT 120')]))
+        from .chart_history import read
+        value['volume_history'],value['chart_window']=read(store,(value['volumes'] or [{}])[0].get('device'),window)
         history = store.payloads('history_runs')
         if history:
             row = history[0]
@@ -71,7 +72,10 @@ class Panel:
                 if path == '/api/dashboard':
                     try:
                         from .monitor import load
-                        body = json.dumps(snapshot(load()), ensure_ascii=False).encode()
+                        window=parse_qs(urlsplit(self.path).query).get('range',['24h'])[0]
+                        from .chart_history import RANGES
+                        if window not in RANGES:return self.send(400,b'Unsupported chart range')
+                        body = json.dumps(snapshot(load(),window), ensure_ascii=False).encode()
                         return self.send(200, body, 'application/json; charset=utf-8')
                     except Exception:
                         return self.send(503, b'Monitor data is temporarily unavailable')

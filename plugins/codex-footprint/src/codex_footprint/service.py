@@ -102,8 +102,10 @@ def handle_hook(payload):
     if 'codex' in (metadata.get('tool_name') or '').lower() and 'footprint' in (metadata.get('tool_name') or '').lower():
         return  # Avoid recording observation of the observer's own MCP tools.
     if config.get('version') == 2:
-        from .monitor import enqueue
+        from .monitor import enqueue,host_disabled
+        if host_disabled():return
         enqueue(config,metadata,cwd)
-        return
+        from .codex_notices import take
+        return take(config,metadata)
     with history(config,True) as store:
         store.capture(metadata,scan=metadata['event'] not in {'SessionEnd','Interrupt'})

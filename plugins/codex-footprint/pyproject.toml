@@ -1,6 +1,6 @@
 [project]
 name = "codex-footprint"
-version = "0.3.1"
+version = "0.4.0"
 description = "Independent development storage growth monitor for Codex"
 requires-python = ">=3.9"
 dependencies = []
