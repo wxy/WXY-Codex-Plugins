@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "codex-footprint": {
+      "command": "python3",
+      "args": [
+        "./scripts/codex_footprint.py",
+        "serve"
+      ],
+      "cwd": ".",
+      "env_vars": [
+        "CODEX_FOOTPRINT_DATA",
+        "CODEX_FOOTPRINT_CONFIG",
+        "XDG_STATE_HOME",
+        "CODEX_HOME"
+      ],
+      "startup_timeout_sec": 10,
+      "tool_timeout_sec": 15
+    }
+  }
+}

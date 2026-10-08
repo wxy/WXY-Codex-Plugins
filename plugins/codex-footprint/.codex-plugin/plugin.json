@@ -1,0 +1,30 @@
+{
+  "name": "codex-footprint",
+  "version": "0.4.1",
+  "description": "Independent developer plugin for Codex. Monitor development storage growth locally; observe, explain and recommend without deletion.",
+  "author": {
+    "name": "Xingyu Wang"
+  },
+  "license": "MIT",
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Codex Footprint",
+    "shortDescription": "Track development storage",
+    "longDescription": "Independent developer plugin for Codex. Identify large development artifacts, rapid growth and retained historical heavy hitters. Local full version uses trusted hooks and local MCP; it does not delete files. Not affiliated with or endorsed by OpenAI.",
+    "developerName": "Xingyu Wang",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Explain my development storage growth.",
+      "Show historical storage heavy hitters.",
+      "Prepare a storage review plan."
+    ],
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/icon.svg"
+  }
+}

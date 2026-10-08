@@ -1,0 +1,82 @@
+{
+  "description": "Metadata-only bounded storage observation; fail-open, silent, no deletion. Manual Codex Desktop distribution only.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex_footprint.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook || :; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex_footprint.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook || :; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex_footprint.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook || :; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex_footprint.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook || :; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex_footprint.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook || :; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex_footprint.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook || :; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex_footprint.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook || :; fi",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}

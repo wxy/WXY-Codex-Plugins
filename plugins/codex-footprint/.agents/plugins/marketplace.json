@@ -1,0 +1,20 @@
+{
+  "name": "codex-footprint-local",
+  "interface": {
+    "displayName": "Codex Footprint local development"
+  },
+  "plugins": [
+    {
+      "name": "codex-footprint",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

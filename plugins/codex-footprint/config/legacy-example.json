@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "enabled": false,
+  "roots": [
+    {"id": "workspace", "path": "$CWD"},
+    {"id": "xcode-derived-data", "path": "~/Library/Developer/Xcode/DerivedData", "enabled": false},
+    {"id": "simulator", "path": "~/Library/Developer/CoreSimulator", "enabled": false}
+  ],
+  "observer": {"max_entries": 100000, "max_seconds": 2, "bucket_depth": 1, "top_files": 20},
+  "thresholds": {"large_bytes": 1073741824, "growth_bytes": 268435456, "rapid_bytes_per_second": 67108864, "many_files": 10000, "sustained_intervals": 3},
+  "retention": {"max_snapshots": 500, "max_events": 5000},
+  "exclude_names": []
+}

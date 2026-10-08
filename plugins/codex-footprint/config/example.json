@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "enabled": false,
+  "discovery": true,
+  "roots": [],
+  "monitor": {
+    "interval_seconds": 2,
+    "refresh_seconds": 60,
+    "slice_entries": 5000,
+    "slice_seconds": 0.02,
+    "autostart": true,
+    "event_backend": "auto",
+    "reconcile_seconds": 1800
+  },
+  "notifications": {
+    "backend": "desktop",
+    "cooldown_seconds": 3600,
+    "material_growth_bytes": 268435456,
+    "minimum_free_bytes": 10737418240,
+    "codex_context": true
+  },
+  "history": {
+    "max_files": 2000,
+    "max_records": 100000,
+    "max_seconds": 10,
+    "max_entries": 100000
+  },
+  "thresholds": {
+    "large_bytes": 1073741824,
+    "growth_bytes": 268435456,
+    "rapid_bytes_per_second": 67108864,
+    "many_files": 10000,
+    "sustained_intervals": 3
+  },
+  "retention": {
+    "max_snapshots": 500,
+    "max_events": 5000
+  },
+  "exclude_names": []
+}
