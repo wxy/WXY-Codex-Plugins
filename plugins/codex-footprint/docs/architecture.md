@@ -1,6 +1,6 @@
 # Architecture — V1
 
-Codex Footprint is a Codex-specific development storage growth monitor. The first implementation is local, metadata-only and non-destructive. Current scope is personal local use; the complete lifecycle/MCP flow takes priority over public distribution.
+Codex Footprint is a Codex-specific development storage growth monitor. The first implementation is local, metadata-only and non-destructive. The [product contract](product-scope.md) defines two required functions: global monitoring with actionable alerts, and explicit historical analysis including pre-enable artifacts. The first sections below describe the shipped 0.1.0 foundation; the target architecture at the end is not implemented. Personal local use takes priority over public distribution.
 
 ```mermaid
 flowchart LR
@@ -42,16 +42,43 @@ Directory buckets form a partition: root-level files use the root bucket, deeper
 
 A scope hash includes canonical roots, observer settings, exclusions, data directory and accounting version. Configuration scope changes cannot silently subtract incomparable snapshots. Threshold and retention changes do not change measured scope. Default reports compare the first and latest retained observations in that scope. Task reports require their own SessionStart or UserPromptSubmit baseline; a retained PostToolUse cannot fabricate a missing pre-baseline.
 
-A comparison requires complete endpoints. Partial snapshots display lower-bound observed occupancy and diagnostics; numeric growth and rates remain unknown. Sustained growth requires multiple positive complete intervals; unchanged observations neither add to nor reset the streak, shrinking or incomplete observations reset it. "Historical" means retained baseline occupancy, not pre-install attribution or inactivity.
+A comparison requires complete endpoints. Partial snapshots display lower-bound observed occupancy and diagnostics; numeric growth and rates remain unknown. Sustained growth requires multiple positive complete intervals; unchanged observations neither add to nor reset the streak, shrinking or incomplete observations reset it. In the current snapshot engine, "historical" means retained baseline occupancy. This is narrower than the product's required pre-enable historical investigation, which needs a separate evidence adapter; neither a baseline nor a path reference proves pre-install growth or inactivity.
 
 Tool windows are temporal correlations. Concurrent tasks, external writers, OS services, Docker daemons and background children prevent unique ownership. Windows may overlap and must not be summed. Large and numerous files can be useful artifacts. Every cleanup plan declares execution unsupported and reclaim unknown.
 
-## Future ports
+## Planned extensions
 
-The observer's snapshot DTO and report `schema_version` are the stable integration boundary for a panel, reminders and process-evidence adapters. UI clients should use query operations and display coverage/attribution beside metrics. Notifications must deduplicate new actionable signals and must not be triggered by an incomplete scan treated as zero usage.
+The observer's snapshot DTO and report `schema_version` are integration boundaries for alerts, a panel and process-evidence adapters; version changes must preserve old history and explicit coverage semantics. A user-visible alert adapter is required for the global monitor. The optional panel can follow later. Clients should display coverage/attribution beside metrics. Notifications must deduplicate new actionable signals and must not be triggered by an incomplete scan treated as zero usage.
 
 Future process evidence should attach PID, parent identity, process start time, executable classification, evidence source and limitations. PID alone cannot establish causation. A companion/daemon may enable in-tool periodic observations and descendant tracking, but needs its own lifecycle, permissions, CPU/IO budgets and supported installation model. None is active in V1. Remote services and cloud sync are outside current personal-local scope.
 
 ## Operational limits
 
 Default history is 500 snapshots and 5,000 events, with at most 100,000 scanned entries per snapshot. Per-scan data is bounded but aggregate metadata can still be substantial; SQLite freed pages are reused rather than automatically vacuumed. Historical daily rollups, database byte ceilings, fair scheduling among large roots, filesystem notifications, periodic in-tool observation, verified process attribution and daemon recovery are future work. A large first root can exhaust the shared budget before later roots, which remain explicitly incomplete.
+
+## Target architecture — both core functions (not implemented)
+
+```mermaid
+flowchart LR
+  C[All supported local Codex sessions] --> H[Lightweight lifecycle evidence]
+  H --> W[One global bounded observer worker]
+  V[System volume capacity] --> W
+  D[Global path discovery and refresh] --> W
+  W --> DB[(Shared inventory, evidence and history)]
+  U[Explicit historical-analysis request] --> A[Read-only local history adapter]
+  A --> X[Verify surviving paths and measure occupancy]
+  X --> DB
+  DB --> E[Heavy hitters and evidence-aware analysis]
+  E --> N[Deduplicated meaningful alerts]
+  E --> M[MCP explanations and review plans]
+  E -. optional .-> P[Panel]
+```
+
+- **Global coordination:** one machine config/state location is resolved consistently by Hooks, MCP and worker, independently of project, current chat and plugin cache version. Coalesce multiple clients; serialize/cancel bounded work, recover from crashes and retain discovery progress/coverage. Avoid full directory traversals on every synchronous hook. Disabling observation stops new background work without erasing history.
+- **Capacity and inventory:** sample system-reported volume capacity separately from allocated file-block inventory. Discover Codex/project/external-tool locations across sessions, refresh fairly under IO/CPU budgets and record inaccessible/unclassified areas. Shared stores and unrelated volume changes remain explicit; global disk growth is not automatically Codex growth.
+- **Post-enable evidence:** associate volume/inventory observations with lifecycle windows and any available process/artifact evidence. Concurrent sessions and background descendants require overlap-aware accounting and coverage. Temporal correlation and exclusive process ownership remain separate claims.
+- **On-demand history adapter:** only an explicit historical-analysis request starts old-session reconstruction. Discover versioned local session/task/worktree/artifact records read-only, extract minimal needed links, verify current paths and produce a derived evidence index. Reading relevant saved tool records for this request does not authorize raw transcript/prompt/command retention. Missing, moved, planned-only, ambiguous or unsupported evidence stays visible.
+- **Evidence model:** keep association class (`recorded`, `candidate`, `unattributed`), evidence references and limitations independently from time evidence (`observed_interval`, `no_baseline`). Store current occupancy and measured growth as distinct values. Deduplicate shared/parent-child/hardlinked storage globally; sessions may reference the same artifact without owning additive byte totals. Exact schemas are pending implementation.
+- **Alerts and queries:** persist finding identity/acknowledgement/cooldown and route meaningful new conditions through a supported, tested user-visible adapter. Read-only queries stay read-only. A separately named explicit historical-analysis operation may trigger bounded work and write a derived index; the existing `footprint_report` must not silently acquire those side effects. A first discovery of an old large directory is not new growth.
+
+See the staged E2E and real-host acceptance criteria in [product scope](product-scope.md). This diagram is a development target, not evidence that a worker, historical adapter or alert delivery is currently active.

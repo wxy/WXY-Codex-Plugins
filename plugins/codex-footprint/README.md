@@ -2,13 +2,17 @@
 
 **Development Storage Growth Monitor for Codex.** An independent developer plugin by Xingyu Wang, not affiliated with or endorsed by OpenAI.
 
-Codex Footprint observes development storage before and after Codex lifecycle/tool events, retains historical baselines, and surfaces heavy hitters: large occupancy, rapid or substantial growth, many files, and sustained accumulation. It defaults to **observe → explain → recommend**. It has no deletion API and never runs cleanup commands.
+Codex Footprint has two core goals: **global monitoring of Codex-related storage growth after enablement, with meaningful alerts**, and **explicitly requested analysis of existing Codex-related occupancy, including artifacts from before enablement**. It surfaces heavy hitters: large occupancy, rapid or substantial growth, many files, and sustained accumulation. It defaults to **observe → explain → recommend**. It has no deletion API and never runs cleanup commands.
 
-> 面向 Codex 的开发存储增长监测插件。记录任务窗口内的存储变化，抓大放小，解释历史大头并生成处理建议。不是 Cleaner，不主动删除。
+> 两项核心能力：启用后全局监测所有本机 Codex 会话相关的空间增长，值得关注时提醒；用户明确要求时，分析已有会话相关的现存占用，包括启用前留下的产物。抓大放小，不主动删除。
+
+The [product scope](docs/product-scope.md) defines these goals, evidence boundaries and acceptance stages. Monitoring shares one machine configuration/history across sessions. Historical analysis measures surviving occupancy and checks available old-session evidence; it does not require an old plugin baseline or invent growth that was never observed. Alert delivery is core behavior; a dedicated panel is optional.
+
+> 全局配置和历史库跨会话共用。历史分析不要求插件此前已启用，但必须区分有记录关联、可能相关和无法归因的占用；没有历史基线时，不伪造过去增长量。提醒属于核心能力，独立面板可后置。
 
 ## Status and local-use goal
 
-Version 0.1.0 is a **local V1 skeleton with a working end-to-end observation flow**, intended for personal use in Codex Desktop. It preserves automatic lifecycle observation and local MCP. Automated transport E2E and isolated Codex package installation have passed; a real Desktop session's hook trust/delivery and overhead remain to be accepted.
+Version 0.1.0 is a **local V1 skeleton with a working end-to-end observation flow**, intended for personal use in Codex Desktop. It implements bounded configured-root snapshots, lifecycle adapters and local MCP. Automated transport E2E and isolated Codex package installation have passed; real Desktop lifecycle delivery and overhead remain to be accepted. Global discovery/background scheduling, meaningful alerts and pre-enable session evidence analysis are not implemented yet; neither core product goal is complete.
 
 Official-marketplace publication is outside the current scope. The earlier platform assessment is preserved only as [historical context](docs/history/2026-10-08-marketplace-assessment.md). See [local distribution](docs/distribution.md) for packaging and installation.
 
@@ -28,7 +32,7 @@ python3 scripts/codex_footprint.py cleanup-plan
 
 `init-config` creates an opt-in configuration and refuses to overwrite an existing one. It does not install hooks or modify Codex settings. No configuration means no hook scanning and no state creation. Select narrow development roots rather than your entire home directory or disk. See [configuration](docs/configuration.md).
 
-A first scan identifies existing occupancy and historical heavy hitters. It cannot reconstruct growth or ownership before installation. Growth uses the first retained baseline in the same scope, or the task's lifecycle baseline when a task is selected. `--session-id ID --turn-id ID` selects a turn; a turn requires a session. Incomplete endpoints produce unknown growth, never a zero-growth success claim.
+A first V1 scan identifies existing occupancy and heavy hitters. It cannot reconstruct growth or ownership before installation. The planned historical-analysis workflow will check available older session evidence against surviving artifacts; current `footprint_report` only reads plugin snapshots. Growth uses the first retained baseline in the same scope, or the task's lifecycle baseline when a task is selected. `--session-id ID --turn-id ID` selects a turn; a turn requires a session. Incomplete endpoints produce unknown growth, never a zero-growth success claim.
 
 ## Install from WXY Codex Plugins
 
@@ -95,4 +99,4 @@ The E2E runner executes the real hook commands, creates real files through an ex
 
 Local ZIPs include complete hooks, MCP wiring, the observer core, docs and tests. They preserve relative paths and use reproducible archive metadata; `package --output dist` is equivalent to the explicit local profile.
 
-Read [architecture](docs/architecture.md), [configuration](docs/configuration.md), [local distribution](docs/distribution.md), [V1 scope](docs/v1-scope.md), and [privacy](PRIVACY.md).
+Read [product scope](docs/product-scope.md), [architecture](docs/architecture.md), [configuration](docs/configuration.md), [local distribution](docs/distribution.md), [V1 scope](docs/v1-scope.md), and [privacy](PRIVACY.md).

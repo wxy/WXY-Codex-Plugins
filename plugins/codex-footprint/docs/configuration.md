@@ -1,5 +1,9 @@
 # Configuration
 
+The target product uses one machine-wide configuration and shared history for all local Codex sessions. Roots are global discovery/scope settings, not per-chat setup. Global post-enable monitoring and explicitly requested pre-enable historical analysis are separate operations; see [product scope](product-scope.md).
+
+The instructions below describe **0.1.0's existing explicit-root configuration**, not automatic global discovery or a background monitor. Those capabilities and shared worker/MCP/Hook path resolution still require implementation. Enabling this config does not activate alerts or reconstruct older sessions.
+
 No configuration means hooks are inactive. The disabled example in `config/example.json` shows optional macOS development roots; none is enabled implicitly.
 
 ## Paths and initialization

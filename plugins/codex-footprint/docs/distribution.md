@@ -1,6 +1,6 @@
 # WXY Codex Plugins distribution
 
-As of **2026-10-08**, the canonical maintenance location is `WXY-Codex-Plugins/plugins/codex-footprint/`. It is a complete personal local Codex plugin, preserving lifecycle hooks and local MCP. Official-marketplace publication is outside current scope.
+As of **2026-10-08**, the canonical maintenance location is `WXY-Codex-Plugins/plugins/codex-footprint/`. It packages the full available 0.1.0 local runtime, preserving lifecycle adapters and local MCP. The two core functions in [product scope](product-scope.md) remain development targets. Official-marketplace publication is outside current scope.
 
 ## Install from the shared marketplace
 
@@ -11,7 +11,7 @@ codex plugin add codex-footprint@wxy-codex-plugins
 
 Skip the first command if that marketplace is already registered. For local development, the marketplace may point at the local WXY repository instead of the GitHub source; its entry resolves `./plugins/codex-footprint`. Install only this plugin. Existing Daydream and PR Title Hook entries are unchanged.
 
-Installation, host hook trust and observation configuration are separate. Review/trust the hook definitions in a new Codex chat and set stable `CODEX_FOOTPRINT_DATA` and `CODEX_FOOTPRINT_CONFIG` paths shared by hooks and MCP. Configure explicit development roots. No configuration means inactive observation. V1 results appear through MCP in the conversation or through CLI JSON; a dedicated panel and reminders remain future work.
+Installation, host hook trust and observation configuration are separate. Review/trust the hook definitions in a new Codex chat and set stable `CODEX_FOOTPRINT_DATA` and `CODEX_FOOTPRINT_CONFIG` paths shared by hooks and MCP. Configure explicit development roots for 0.1.0. No configuration means inactive observation. V1 results appear through MCP in the conversation or through CLI JSON. Global monitoring, required meaningful alerts and pre-enable historical investigation are not yet implemented; the dedicated panel is optional later work.
 
 ## Self-contained archive
 
