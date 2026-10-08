@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex_footprint.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook || :; fi",
             "timeout": 10
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex_footprint.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook || :; fi",
             "timeout": 10
           }
         ]
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex_footprint.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook || :; fi",
             "timeout": 10
           }
         ]
@@ -39,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex_footprint.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook || :; fi",
             "timeout": 10
           }
         ]
@@ -50,7 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex_footprint.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook || :; fi",
             "timeout": 10
           }
         ]
@@ -61,7 +61,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex_footprint.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook || :; fi",
             "timeout": 10
           }
         ]
@@ -72,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook",
+            "command": "if [ -f \"$PLUGIN_ROOT/scripts/codex_footprint.py\" ]; then python3 \"$PLUGIN_ROOT/scripts/codex_footprint.py\" hook || :; fi",
             "timeout": 3
           }
         ]

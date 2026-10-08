@@ -1,10 +1,10 @@
-# Implementation and acceptance boundary — 0.3.0
+# Implementation and acceptance boundary — 0.3.1
 
 [Product scope](product-scope.md) remains the target contract. [Implementation plan](implementation-plan.md) orders A → B → C → D. The two functions now have a working local implementation; automated results and real host acceptance must be reported separately.
 
 ## Implemented
 
-- Full WXY plugin manifest, unchanged seven lifecycle definitions, nine local MCP tools and reproducible ZIP.
+- Full WXY plugin manifest, seven guarded lifecycle definitions, nine local MCP tools and reproducible ZIP.
 - One stable global config/history, lightweight spool, elected detached worker, fair resumable metadata walks and separate capacity samples.
 - Global known-development-root/workspace discovery; complete comparable baselines, worker health and next-hook recovery; disable retains history.
 - Growth/rate/file-count/large-threshold/sustained/capacity signals, durable inbox, acknowledgement, cooldown and material re-alert.

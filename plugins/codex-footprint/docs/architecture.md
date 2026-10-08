@@ -1,4 +1,4 @@
-# Architecture — 0.3.0
+# Architecture — 0.3.1
 
 An independent local Codex-specific development storage growth monitor. [Product scope](product-scope.md) defines global monitoring/alerts and explicit pre-enable historical occupancy analysis. Personal use takes priority; no deletion, telemetry or remote service exists.
 
@@ -38,7 +38,7 @@ flowchart LR
 
 ## Lifecycle and worker
 
-Seven unchanged hook definitions receive SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SessionEnd and Interrupt. They store allowlisted IDs, tool/family labels, workspace and timestamp, never prompt, command, arguments, raw output or environment. Invalid input/config remains fail-open with a diagnostic and exit 0. Short Interrupt hooks may still be terminated by the host; acceptance must expose gaps.
+Seven lifecycle events receive SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SessionEnd and Interrupt. They store allowlisted IDs, tool/family labels, workspace and timestamp, never prompt, command, arguments, raw output or environment. Invalid input/config remains fail-open with a diagnostic and exit 0. Short Interrupt hooks may still be terminated by the host; acceptance must expose gaps.
 
 Atomic spool files allow concurrent clients. A held filesystem lock elects exactly one worker; race losers exit. Each tick drains bounded events, discovers/compacts roots and advances fair bounded walks. Unused entry budget is redistributed across active walks while the time slice remains; recent lifecycle work prioritizes its root as capacity becomes available, preserving in-progress cold cursors. Open walks remain bounded. Volume sampling is independent of directory completion. Open traversals are capped according to descriptor limits. Worker health is checked using the held lock and a heartbeat, not PID alone.
 
@@ -69,3 +69,5 @@ Default global retention is 500 finished observations, volume samples, findings 
 Complete monitor endpoints update daily first/last rows before snapshot pruning. Rollups are idempotent by local date and retained 90 days; they disclose independent observation intervals and never imply full-day coverage from short samples. Missing endpoints or changed scope yield unknown growth. Roots and session figures are not summed. Preparing a rollup and refreshing a panel read retained metadata only.
 
 The worker owns a read-only loopback server. A standalone panel server is also available, with no scan side effect. A separate Codex scheduled chat calls the daily operation at 21:00 and reports through supported app activity. Immediate third-party notification-center push has no established public API; system notifications and the durable inbox remain the immediate channel. See official [notifications](https://learn.chatgpt.com/docs/notifications), [scheduled tasks](https://learn.chatgpt.com/docs/automations?surface=app) and the [delivery plan](monitor-dashboard-plan.md).
+
+The hook shell checks that the cached entrypoint exists and tolerates Python startup failure; it never makes an authorization decision. `scripts/update_plugin.py` preserves prior chat entrypoints across the supported CLI upgrade and moves an existing stable runtime pointer. Installer failure restores the preceding runtime when available. Ordinary metadata scanning uses `scandir`/`stat` and capacity uses `statvfs`; no StorageManagement API is called. A 20-ms traversal slice excludes scheduling, SQLite and filesystem latency, so it is not a total CPU guarantee.

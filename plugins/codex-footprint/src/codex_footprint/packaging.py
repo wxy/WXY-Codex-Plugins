@@ -15,7 +15,7 @@ def build(profile, output):
     manifest = json.loads((repo/'.codex-plugin/plugin.json').read_text())
     files = {}
     if profile=='local':
-        for relative in ('.codex-plugin/plugin.json','.mcp.json','hooks/hooks.json','scripts/codex_footprint.py','.agents/plugins/marketplace.json','pyproject.toml','AGENTS.md'):
+        for relative in ('.codex-plugin/plugin.json','.mcp.json','hooks/hooks.json','scripts/codex_footprint.py','scripts/update_plugin.py','.agents/plugins/marketplace.json','pyproject.toml','AGENTS.md'):
             files[relative] = (repo/relative).read_bytes()
         for folder in ('src','skills','config','assets','docs','tests'):
             for path in (repo/folder).rglob('*'):

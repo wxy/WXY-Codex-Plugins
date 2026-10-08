@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import resource
 import subprocess
 import sys
 import tempfile
@@ -80,11 +81,14 @@ def main():
         cli('enable', *[part for p in projects for part in ('--root', str(p))], '--no-defaults', '--no-start', '--notifications', 'inbox')
         try:
             def fair():
+                # Test entry-budget reuse independently of the conservative production time slice.
+                config(monitor={'slice_entries':1000,'slice_seconds':.2})
                 value = cli('tick', '--rounds', '6')
+                config(monitor={'slice_entries':5000,'slice_seconds':.02})
                 row = next(r for r in value['roots'] if r['path'] == str(projects[0]))
                 assert row['complete'], {'entries': row['entries_visited'], 'expected_files': 2500}
                 assert row['file_count'] == 2500
-                return {'roots': 8, 'generated_files': 2500, 'max_rounds': 6, 'entries_visited': row['entries_visited']}
+                return {'roots': 8, 'generated_files': 2500, 'max_rounds': 6, 'entries_visited': row['entries_visited'], 'fixture_entry_budget':1000,'fixture_slice_seconds':.2}
             case('fair_budget', fair)
 
             def background():
@@ -184,6 +188,19 @@ def main():
                 assert not empty['roots'] and not empty['coverage']['full_day']
                 return {'mcp_tools':9,'annotations_and_future_date_rejection':True,'no_fabricated_missing_history':True}
             case('mcp_daily_dashboard', protocol)
+
+            def idle_cpu():
+                roots=[tmp/('idle-%03d'%n) for n in range(200)]
+                for path in roots:path.mkdir()
+                cli('enable',*[part for path in roots for part in ('--root',str(path))],'--no-defaults','--no-start','--notifications','inbox')
+                config(monitor={'interval_seconds':.02,'refresh_seconds':3600})
+                before=resource.getrusage(resource.RUSAGE_CHILDREN)
+                run('worker','--max-ticks','8')
+                after=resource.getrusage(resource.RUSAGE_CHILDREN)
+                cpu=after.ru_utime+after.ru_stime-before.ru_utime-before.ru_stime
+                assert cpu<1.0, {'cpu_seconds':cpu,'budget_seconds':1.0,'ticks':8,'empty_roots':200}
+                return {'cpu_seconds':cpu,'budget_seconds':1.0,'ticks':8,'empty_roots':200,'scope':'local regression budget; not a whole-machine CPU promise'}
+            case('idle_cpu_budget', idle_cpu)
 
             def supervisor_disabled():
                 cli('disable')

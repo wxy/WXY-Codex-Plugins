@@ -6,7 +6,7 @@ Enable once to monitor supported local Codex sessions across projects. Ask expli
 
 > 启用一次，全局观察本机 Codex 会话相关的开发存储增长；用户明确要求时，调查旧会话相关的现存占用，包括安装前的产物。抓大放小，只观察、解释和建议，不主动删除。
 
-## Version 0.3.0
+## Version 0.3.1
 
 The local runtime includes a shared observer, automatic development-root discovery, volume-capacity samples, persisted alerts, explicit historical analysis, daily summaries and a local read-only panel. Nine MCP tools expose results in Codex. Version 0.3 improves fair scan scheduling and prioritizes recently active projects; an explicitly installed macOS user service provides login/crash recovery.
 
@@ -93,3 +93,9 @@ python3 scripts/codex_footprint.py package --profile local --output dist
 Every E2E suite retains reports only, with commands, generated-input recipes, prerequisites and actual results. Temporary fixtures and processes are removed; full logs and databases are not archived. No credentials/model calls are required. [Verification](docs/verification.md) separates fixtures from actual Desktop acceptance.
 
 Read [product scope](docs/product-scope.md), [implementation plan](docs/implementation-plan.md), [architecture](docs/architecture.md), [configuration](docs/configuration.md), [distribution](docs/distribution.md), and [privacy](PRIVACY.md).
+
+## Safe upgrades
+
+For an existing installation, run `python3 scripts/update_plugin.py` from the updated plugin source. It updates only Codex Footprint, restores older cached hook entrypoints before returning and updates the existing stable service pointer. Keep running chats open; start a fresh chat to load new MCP code. Direct upgrades through other installers can remove old cache paths; guarded hooks remain nonblocking, but old chats may miss observations until compatibility paths are restored.
+
+Version 0.3.1 uses a 2-second tick and a 20-millisecond traversal slice, and reduces root-scheduling overhead. These are traversal budgets, not a whole-process CPU ceiling. The plugin uses filesystem metadata, local SQLite and capacity calls; it does not invoke macOS Storage Management services. System-service overhead still requires separate observation.

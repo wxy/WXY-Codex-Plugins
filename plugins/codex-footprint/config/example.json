@@ -4,10 +4,10 @@
   "discovery": true,
   "roots": [],
   "monitor": {
-    "interval_seconds": 0.5,
+    "interval_seconds": 2,
     "refresh_seconds": 60,
     "slice_entries": 5000,
-    "slice_seconds": 0.05,
+    "slice_seconds": 0.02,
     "autostart": true
   },
   "notifications": {

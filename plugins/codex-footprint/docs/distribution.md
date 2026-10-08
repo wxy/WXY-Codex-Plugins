@@ -1,15 +1,21 @@
 # WXY Codex Plugins distribution
 
-Canonical source: `WXY-Codex-Plugins/plugins/codex-footprint/`. Version **0.3.0** packages the full local global-monitor and explicit-history runtime. Official-marketplace publication is outside scope.
+Canonical source: `WXY-Codex-Plugins/plugins/codex-footprint/`. Version **0.3.1** packages the full local global-monitor and explicit-history runtime. Official-marketplace publication is outside scope.
 
 ```sh
 codex plugin marketplace add wxy/WXY-Codex-Plugins
 codex plugin add codex-footprint@wxy-codex-plugins
 ```
 
-Skip registration if present. The personal marketplace may point at the local WXY checkout; its entry resolves `./plugins/codex-footprint`. Install only this plugin; preserve Daydream and PR Title Hook. Installation, host hook trust and global observation enablement remain distinct. Seven hook definitions are unchanged from 0.1.0; do not bypass host trust. After upgrading, create a fresh chat to load new MCP tools, then globally enable once. See [configuration](configuration.md).
+Skip registration if present. The personal marketplace may point at the local WXY checkout; its entry resolves `./plugins/codex-footprint`. Install only this plugin; preserve Daydream and PR Title Hook. Installation, host hook trust and global observation enablement remain distinct. The same seven lifecycle events are retained. Version 0.3.1 guards missing cache/startup failures so observation cannot block a chat. Hook commands changed; the host may request renewed review. Do not bypass host trust. After upgrading, create a fresh chat to load new MCP tools, then globally enable once. See [configuration](configuration.md).
 
-State stays outside version caches. Back up old version directories when running chats still reference them; a compatibility path may forward old hook entrypoints to the new installed runtime. Already-imported old MCP processes still need a fresh chat. Do not erase legacy databases or overwrite unrelated host configuration. The original independent repository remains provenance.
+State stays outside version caches. For an existing installation, run the updated source helper:
+
+```sh
+python3 plugins/codex-footprint/scripts/update_plugin.py
+```
+
+It backs up the previous runtime temporarily, upgrades only this plugin, restores old chat hook entrypoints before returning and refreshes an existing stable runtime/service. Use this path for personal upgrades rather than a bare reinstall. Other installers can still purge old caches; guarded hooks stay nonblocking but may miss observations until the helper restores compatibility. Already-imported old MCP processes still need a fresh chat. Do not erase legacy databases or overwrite unrelated host configuration. The original independent repository remains provenance.
 
 From the plugin directory:
 
@@ -25,4 +31,4 @@ From WXY root:
 python3 tests/e2e_codex_footprint_marketplace.py --output test-artifacts/codex-footprint/marketplace
 ```
 
-The test installs the actual entry in a disposable Codex profile, compares hashes and runs all four E2E suites from the installed copy. It changes no personal profile, bypasses no trust and calls no model. Real Desktop event delivery, visible notifications and observation overhead remain distinct acceptance gates.
+The test installs the actual entry in a disposable Codex profile, compares hashes and runs all four E2E suites from the installed copy plus real-CLI safe-upgrade acceptance. It changes no personal profile, bypasses no trust and calls no model. Real Desktop event delivery, visible notifications and observation overhead remain distinct acceptance gates.

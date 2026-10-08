@@ -1,4 +1,4 @@
-# Global configuration — 0.3.0
+# Global configuration — 0.3.1
 
 Enable once per machine, independently of chats/projects. Missing configuration means inactive hooks. Historical investigation can still run on explicit request while monitoring is off.
 
@@ -37,10 +37,10 @@ See the disabled `config/example.json`. Roots are absolute/`~` paths; nested pat
 | --- | --- | --- |
 | `enabled` | false in example | Global observation switch |
 | `discovery` | true | Known development roots plus event workspaces |
-| `monitor.interval_seconds` | 0.5 | Tick pause |
+| `monitor.interval_seconds` | 2 | Tick pause |
 | `monitor.refresh_seconds` | 60 | Minimum pause between completed root walks |
 | `monitor.slice_entries` | 5,000 | Per-tick shared entry budget, reused while time remains |
-| `monitor.slice_seconds` | 0.05 | Metadata traversal time slice |
+| `monitor.slice_seconds` | 0.02 | Metadata traversal time slice |
 | `monitor.autostart` | true | Restart worker on trusted hook |
 | `notifications.backend` | desktop | macOS notification adapter or inbox |
 | `notifications.cooldown_seconds` | 3,600 | Minimum re-alert delay |

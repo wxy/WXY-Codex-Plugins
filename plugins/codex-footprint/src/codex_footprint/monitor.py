@@ -16,7 +16,7 @@ from .config import data_directory, OBSERVER, THRESHOLDS, RETENTION, number
 from .global_store import GlobalStore
 from .inventory import Cycle
 
-MONITOR={'interval_seconds':0.5,'refresh_seconds':60,'slice_entries':5000,'slice_seconds':0.05,'autostart':True}
+MONITOR={'interval_seconds':2,'refresh_seconds':60,'slice_entries':5000,'slice_seconds':0.02,'autostart':True}
 NOTIFICATIONS={'backend':'desktop','cooldown_seconds':3600,'material_growth_bytes':256*1024**2,'minimum_free_bytes':10*1024**3}
 HISTORY={'max_files':2000,'max_records':100000,'max_seconds':10,'max_entries':100000}
 
@@ -76,11 +76,12 @@ def normalize(raw,data,path):
         p=candidate.resolve()
         if p==Path(p.anchor) or p==Path.home():raise ValueError('Choose a development directory rather than disk/home')
         if p==data or data in p.parents:continue
-        if any(p==r or r in p.parents for r in roots):continue
-        roots=[r for r in roots if p not in r.parents]; roots.append(p)
+        parts=p.parts
+        if any(parts[:len(rparts)]==rparts for _,rparts in roots):continue
+        roots=[(r,rparts) for r,rparts in roots if rparts[:len(parts)]!=parts]; roots.append((p,parts))
     if len(roots)>256:raise ValueError('Root discovery limit exceeded')
-    config['roots']=[{'id':hashlib.sha256(str(p).encode()).hexdigest()[:16],'path':p} for p in roots]
-    config['scope']=hashlib.sha256(json.dumps([str(p) for p in sorted(roots)]).encode()).hexdigest()
+    config['roots']=[{'id':hashlib.sha256(str(p).encode()).hexdigest()[:16],'path':p} for p,_ in roots]
+    config['scope']=hashlib.sha256(json.dumps(sorted(str(p) for p,_ in roots)).encode()).hexdigest()
     return config
 
 
@@ -290,14 +291,17 @@ class Runner:
                 if time.time()-self.discovery_at>=60:
                     self.discovery_paths=discover(config);self.discovery_at=time.time()
                 paths+=self.discovery_paths
+            parts={p:Path(p).parts for p in paths}
             for (cwd,) in store.db.execute('SELECT DISTINCT cwd FROM events ORDER BY ts DESC LIMIT 256'):
                 p=Path(cwd)
                 if p==Path(p.anchor) or p==Path.home() or p==data or data in p.parents or p.is_symlink():continue
-                if any(p==Path(r) or Path(r) in p.parents for r in paths):continue
-                paths=[r for r in paths if p not in Path(r).parents];paths.append(cwd)
-            paths=[p for p in dict.fromkeys(paths) if not set(Path(p).parts).intersection(config['exclude_names'])]
-            # Compact nesting after dynamic discovery; root totals still are not additive across hardlinks/time windows.
-            paths=[p for p in paths if not any(Path(q) in Path(p).parents for q in paths if q!=p)]
+                current=p.parts
+                if any(current[:len(parts[r])]==parts[r] for r in paths):continue
+                paths=[r for r in paths if parts[r][:len(current)]!=current];paths.append(cwd);parts[cwd]=current
+            paths=[p for p in dict.fromkeys(paths) if not set(parts[p]).intersection(config['exclude_names'])]
+            # Compare pre-parsed path components, avoiding quadratic Path/parents construction every tick.
+            all_parts={parts[p] for p in paths}
+            paths=[p for p in paths if not any(parts[p][:n] in all_parts for n in range(1,len(parts[p]))) ]
             for (old_path,) in store.db.execute('SELECT path FROM inventory').fetchall():
                 if old_path not in paths:store.db.execute('DELETE FROM inventory WHERE path=?',(old_path,))
             # Excluded names are applied by path boundaries discovered during the walk, not shell patterns.
@@ -310,7 +314,11 @@ class Runner:
             if ordered:
                 offset=self.cursor%len(ordered);ordered=ordered[offset:]+ordered[:offset];self.cursor+=1
             self.hot_until={p:t for p,t in self.hot_until.items() if t>time.time()}
-            hot={path for path in paths if any(Path(path)==Path(cwd) or Path(path) in Path(cwd).parents for cwd in self.hot_until)}
+            hot_ancestors=set()
+            for cwd in self.hot_until:
+                cwd_parts=Path(cwd).parts
+                hot_ancestors.update(cwd_parts[:n] for n in range(1,len(cwd_parts)+1))
+            hot={path for path in paths if parts[path] in hot_ancestors}
             # Recent lifecycle work gets the first allocation; every active root keeps a fair allocation.
             ordered.sort(key=lambda p:p not in hot)
             from .summaries import remember

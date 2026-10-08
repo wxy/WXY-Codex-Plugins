@@ -60,7 +60,7 @@ def main():
             cache=Path(installed['installedPath'])
             assert installed['version']==manifest['version']
             digests={}
-            for relative in ['.codex-plugin/plugin.json','.mcp.json','hooks/hooks.json','scripts/codex_footprint.py',
+            for relative in ['.codex-plugin/plugin.json','.mcp.json','hooks/hooks.json','scripts/codex_footprint.py','scripts/update_plugin.py',
                              'src/codex_footprint/observer.py','src/codex_footprint/engine.py','src/codex_footprint/service.py',
                              'src/codex_footprint/monitor.py','src/codex_footprint/global_store.py','src/codex_footprint/inventory.py','src/codex_footprint/historical.py','src/codex_footprint/summaries.py','src/codex_footprint/panel.py','src/codex_footprint/supervisor.py','assets/dashboard.html']:
                 a=hashlib.sha256((PLUGIN/relative).read_bytes()).hexdigest()
@@ -81,6 +81,10 @@ def main():
                 assert result.get('failed',0)==0 and result.get('result','pass')=='pass'
                 report[suite]={'passed':result.get('passed',len(result.get('cases',[]))),'failed':result.get('failed',0)}
             report['installation']=installed
+            run([sys.executable,str(REPO/'tests/e2e_footprint_safe_upgrade.py'),'--output',str(output/'safe-upgrade')],timeout=90)
+            upgrade=json.loads((output/'safe-upgrade/report.json').read_text())
+            assert upgrade['result']=='pass'
+            report['safe_upgrade']={'passed':len(upgrade['cases']),'failed':0}
         report['temporary_profile_removed']=not temporary.exists()
         report['result']='pass'
     except Exception:
