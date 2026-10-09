@@ -64,11 +64,15 @@ class GlobalStore:
     def count(self,table):
         if table not in {'events','observations','alerts','history_runs'}:raise ValueError('Invalid count')
         return self.db.execute('SELECT count(*) FROM '+table).fetchone()[0] if self.db else 0
-    def alerts(self):
+    def alerts(self,config=None):
         if not self.db:return []
         from .codex_notices import receipt
         r=receipt(self.path.parent)
-        return [dict(json.loads(p),id=i,acknowledged=bool(a),codex_delivery={'status':'emitted_to_hook_visibility_unverified' if i<=r['last_id'] else 'pending_active_chat','visible':None if i<=r['last_id'] else False}) for i,a,p in self.db.execute('SELECT id,acknowledged,payload FROM alerts ORDER BY id DESC LIMIT 100')]
+        from .storage_scope import series_for
+        if config is None:
+            from .config import load_config
+            config=load_config()
+        return [dict(json.loads(p),id=i,acknowledged=bool(a),codex_delivery={'status':'emitted_to_hook_visibility_unverified' if i<=r['last_id'] else 'pending_active_chat','visible':None if i<=r['last_id'] else False}) for i,a,p in self.db.execute('SELECT id,acknowledged,payload FROM alerts ORDER BY id DESC') if series_for(json.loads(p).get('path'),config)][:100]
     def prune(self,limit=500,event_limit=5000):
         for table in ('observations','volume_history','alerts','history_runs'):
             self.db.execute('DELETE FROM '+table+' WHERE id NOT IN (SELECT id FROM '+table+' ORDER BY id DESC LIMIT ?)',(limit,))

@@ -23,8 +23,15 @@ def take(config,metadata):
             try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
             except BlockingIOError:return
             with sqlite3.connect(dbpath.as_uri()+'?mode=ro',uri=True,timeout=.05) as db:
-                rows=db.execute('SELECT id,payload FROM alerts WHERE id>? AND acknowledged=0 ORDER BY id LIMIT 3',(receipt(data)['last_id'],)).fetchall()
+                rows=db.execute('SELECT id,payload FROM alerts WHERE id>? AND acknowledged=0 ORDER BY id LIMIT 100',(receipt(data)['last_id'],)).fetchall()
             if not rows:return
+            from .storage_scope import series_for
+            eligible=[(i,p) for i,p in rows if series_for(json.loads(p).get('path'),config)][:3]
+            if not eligible:
+                from .monitor import atomic
+                atomic(data/'codex-notice.json',{'last_id':rows[-1][0],'ids':[],'session_id':metadata['session_id'],'emitted_at':time.time()})
+                return
+            rows=eligible
             findings=[]
             for identifier,payload in rows:
                 r=json.loads(payload)

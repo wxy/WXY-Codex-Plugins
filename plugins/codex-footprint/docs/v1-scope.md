@@ -1,4 +1,4 @@
-# Implementation and acceptance boundary — 0.4.1
+# Implementation and acceptance boundary — 0.4.2
 
 [Product scope](product-scope.md) remains the target contract. [Implementation plan](implementation-plan.md) orders A → B → C → D. The two functions now have a working local implementation; automated results and real host acceptance must be reported separately.
 
@@ -6,10 +6,10 @@
 
 - Full WXY plugin manifest, seven guarded lifecycle definitions, nine local MCP tools and reproducible ZIP.
 - One stable global config/history, lightweight spool, elected detached worker, fair resumable metadata walks and separate capacity samples.
-- Global known-development-root/workspace discovery; complete comparable baselines, worker health and next-hook recovery; disable retains history.
+- Selected internal/system and development-volume background coverage; other external disks excluded. Global known-development-root/workspace discovery; complete comparable baselines, worker health and next-hook recovery; disable retains history.
 - Growth/rate/file-count/large-threshold/sustained/capacity signals, durable inbox, acknowledgement, cooldown and material re-alert.
 - Public macOS FSEvents dirty-root scheduling, periodic reconciliation and polling fallback; no per-file delta cache or persistent replay.
-- Top-navigation read-only panel with 1h/24h/7d capacity chart, numeric GB axis and interval delta.
+- Top-navigation read-only panel with separate per-disk metric columns and charts; 1h/24h/7d windows, labeled time axes, numeric GB axes, honest recorded-interval deltas and blank missing coverage.
 - Nonblocking active-chat hook notices with global concurrent deduplication; idle chats are not woken.
 - macOS native notification adapter with honest accepted/failed/unverified-visibility delivery state.
 - Explicit current/archived JSONL historical analysis without old snapshots; surviving occupancy, source/line evidence, recorded/candidate association, missing paths and shared/hardlink deduplication.

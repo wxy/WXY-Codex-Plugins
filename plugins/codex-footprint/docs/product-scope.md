@@ -10,6 +10,7 @@ Codex Footprint is an independent local developer plugin for Codex. It has two c
 
 Enable once for the machine. All supported local Codex sessions contribute to one shared observer and history, across chats, projects and session restarts. Session and tool IDs are association labels, not observation boundaries. Remote/cloud tasks are outside local coverage unless their artifacts are present locally and their source is identified.
 
+- Background coverage selects the internal/system disk and one development disk (auto-resolved from `~/develop`, or explicitly pinned); other external storage is excluded. Show each selected disk with separate metrics and capacity history.
 - Observe machine/volume capacity as context and development storage as the primary subject. Overall disk growth can include unrelated applications and must retain an unattributed category.
 - Discover relevant locations globally: Codex state, worktrees and task artifacts; project/build outputs; dependency/build caches; and tools invoked by Codex, including Xcode, simulators and Docker-backed storage. Recognize shared tool stores without claiming that their entire contents belong to Codex.
 - Use lightweight lifecycle events, background bounded directory discovery, periodic/event-driven refresh and retained baselines. Do not synchronously traverse the whole disk before and after every tool call.

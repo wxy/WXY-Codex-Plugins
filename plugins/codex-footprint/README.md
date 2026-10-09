@@ -6,11 +6,11 @@ Enable once to monitor supported local Codex sessions across projects. Ask expli
 
 > 启用一次，全局观察本机 Codex 会话相关的开发存储增长；用户明确要求时，调查旧会话相关的现存占用，包括安装前的产物。抓大放小，只观察、解释和建议，不主动删除。
 
-## Version 0.4.1
+## Version 0.4.2
 
 The local runtime includes a shared observer, automatic development-root discovery, volume-capacity samples, persisted alerts, explicit historical analysis, daily summaries and a local read-only panel. Nine MCP tools expose results in Codex. Version 0.4 uses macOS FSEvents to remeasure changed roots, with low-frequency reconciliation and polling fallback; an explicitly installed macOS user service provides login/crash recovery.
 
-> 文件变化触发后台测量，静止目录不反复遍历；全盘与历史分析只手动触发。顶部菜单适合竖屏，磁盘图表可切换 1 小时 / 24 小时 / 7 天，带 GB 纵轴和区间变化量。
+> 文件变化触发后台测量，静止目录不反复遍历；全盘与历史分析只手动触发。内置盘与选定开发盘各有一列指标和一张图，窄窗口上下排列。图表可切换 1 小时 / 24 小时 / 7 天，带时间标签、GB 纵轴和已记录区间变化量；没有记录的时段留空。
 
 Automated E2E verifies filesystem behavior and installed-copy operation. Actual host hook delivery, visible notifications and large-machine overhead require separate personal acceptance; native notification command success alone does not prove visibility. See [acceptance boundary](docs/v1-scope.md).
 
@@ -31,7 +31,7 @@ python3 scripts/codex_footprint.py install-service  # macOS login/crash recovery
 python3 scripts/codex_footprint.py status
 ```
 
-This creates one global configuration and starts one detached observer. Defaults discover existing Codex state, immediate `~/develop` projects and known development caches; trusted hook workspace paths extend discovery. Whole-volume free space is sampled separately. No per-chat root setup or routine whole-home/disk traversal is required. Installation alone leaves observation inactive.
+This creates one global configuration and starts one detached observer. Defaults discover existing Codex state, immediate `~/develop` projects and known development caches; trusted hook workspace paths extend discovery. The internal/system volume and the volume containing `~/develop` are selected for background observation; other external volumes are excluded. `monitor.development_volume` can pin the development mount. Each selected volume has independent capacity samples, metrics and a chart. No per-chat root setup or routine whole-home/disk traversal is required. Installation alone leaves observation inactive.
 
 > 安装后允许 Hooks，再执行一次全局启用。配置和历史库跨会话、项目及插件版本共用。无需逐会话配置观察目录；目录覆盖与无法读取的区域会显示在状态中。全盘容量与开发产物占用分别统计。
 
@@ -89,6 +89,7 @@ python3 tests/e2e_global.py --output artifacts/global
 python3 tests/e2e_global_edges.py --output artifacts/edges
 python3 tests/e2e_monitor_dashboard.py --output artifacts/dashboard
 python3 tests/e2e_event_monitor.py --output artifacts/events  # macOS native stream acceptance
+python3 tests/e2e_internal_chart.py --output artifacts/capacity
 python3 scripts/codex_footprint.py package --profile local --output dist
 ```
 
@@ -100,4 +101,4 @@ Read [product scope](docs/product-scope.md), [implementation plan](docs/implemen
 
 For an existing installation, run `python3 scripts/update_plugin.py` from the updated plugin source. It updates only Codex Footprint, restores older cached hook entrypoints before returning and updates the existing stable service pointer. Keep running chats open; start a fresh chat to load new MCP code. Direct upgrades through other installers can remove old cache paths; guarded hooks remain nonblocking, but old chats may miss observations until compatibility paths are restored.
 
-Version 0.4.1 keeps a 2-second tick and a 20-millisecond traversal slice, and reduces root-scheduling overhead. These are traversal budgets, not a whole-process CPU ceiling. The plugin uses filesystem metadata, local SQLite and capacity calls; it does not invoke macOS Storage Management services. System-service overhead still requires separate observation.
+Version 0.4.2 keeps a 2-second tick and a 20-millisecond traversal slice, and reduces root-scheduling overhead. These are traversal budgets, not a whole-process CPU ceiling. The plugin uses filesystem metadata, local SQLite and capacity calls; it does not invoke macOS Storage Management services. System-service overhead still requires separate observation.

@@ -1,4 +1,4 @@
-# Global configuration — 0.4.1
+# Global configuration — 0.4.2
 
 Enable once per machine, independently of chats/projects. Missing configuration means inactive hooks. Historical investigation can still run on explicit request while monitoring is off.
 
@@ -13,7 +13,7 @@ python3 scripts/codex_footprint.py alerts
 python3 scripts/codex_footprint.py disable
 ```
 
-Default discovery covers existing Codex state, immediate `~/develop` directories and known caches/tool directories (`Library/Developer`, `Library/Caches`, `.cache`, `.npm`, `.gradle`, `.cargo`, Homebrew Cellar). Trusted lifecycle workspace paths extend this scope. This is declared local development coverage, not recursive full-home/full-disk coverage or proof all cached bytes belong to Codex. Primary data-volume capacity and discovered-root filesystems are sampled separately.
+Default discovery covers existing Codex state, immediate `~/develop` directories and known caches/tool directories (`Library/Developer`, `Library/Caches`, `.cache`, `.npm`, `.gradle`, `.cargo`, Homebrew Cellar). Trusted lifecycle workspace paths extend this scope. This is declared local development coverage, not recursive full-home/full-disk coverage or proof all cached bytes belong to Codex. Background observation selects the primary system/data volume and, when discovery is enabled, the volume containing `~/develop` (including a parent symlink to an external development disk). Other removable volumes are excluded even if a lifecycle event mentions them. Capacity is sampled independently for each selected disk; this does not traverse the whole disk. Explicit historical analysis retains its separate requested scope.
 
 Advanced bounded setup:
 
@@ -44,6 +44,7 @@ See the disabled `config/example.json`. Roots are absolute/`~` paths; nested pat
 | `monitor.slice_entries` | 5,000 | Per-tick shared entry budget, reused while time remains |
 | `monitor.slice_seconds` | 0.02 | Metadata traversal time slice |
 | `monitor.autostart` | true | Restart worker on trusted hook |
+| `monitor.development_volume` | null | Auto-select the `~/develop` volume when discovery is on; an absolute mount path pins a second disk, e.g. `/Volumes/MacSSD`. The system volume is always selected. An unplugged selected disk remains visible with stale/missing coverage. |
 | `notifications.codex_context` | true | Nonblocking warning/context on the next active trusted chat hook |
 | `notifications.backend` | desktop | macOS notification adapter or inbox |
 | `notifications.cooldown_seconds` | 3,600 | Minimum re-alert delay |
@@ -71,6 +72,6 @@ The elected worker serves `http://127.0.0.1:8766/`; `dashboard` returns its URL 
 
 Native mode schedules first baselines, dirty roots and low-frequency reconciliation; it does not repeatedly walk quiet roots on each chat operation. Polling fallback retains hot-project priority and a two-second minimum refresh pause; cold roots retain the configured pause. A root still needs a complete walk and comparable baseline. Neither the tick pause nor panel refresh is a guaranteed anomaly-detection deadline.
 
-The panel defaults to 24 hours and supports 1 hour/7 days. Capacity history is stored by volume and minute for seven days independently of `retention.max_snapshots` (100,000-row safety cap). Chart points preserve bucket extrema; actual timestamps, GB ticks and first/last recorded delta are shown. Older missing history cannot be backfilled.
+The panel defaults to 24 hours and supports 1 hour/7 days. Capacity history is stored by volume and minute for seven days independently of `retention.max_snapshots` (100,000-row safety cap). Each disk has its own available-space, observed-root, pending-alert and daily-report metrics. The x-axis always spans the selected range with time/date labels, and the y-axis has GB ticks. Minute history is matched by canonical mount path and retained aliases across device-ID changes after reboot/remount. Chart points preserve bucket extrema; gaps over five minutes and unrecorded edges remain blank. The delta describes only the actual first/last sample interval. Older missing history cannot be backfilled. Old daily root records without explicit volume attribution are not assigned a per-disk summary date based on paths that may have moved. Existing metadata is retained rather than deleted when scope narrows.
 
 `notifications.codex_context=false` disables chat hook notices independently of the OS adapter. Notices use supported `systemMessage`/`additionalContext` outputs and continue the current operation. They are globally deduplicated and do not acknowledge findings. Completely idle chats cannot receive a hook until another operation; OS notifications and the separate 21:00 scheduled summary supplement this boundary.

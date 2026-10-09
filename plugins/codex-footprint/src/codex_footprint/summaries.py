@@ -5,6 +5,7 @@ import json
 import time
 
 from .global_store import GlobalStore
+from .storage_scope import scoped_report
 
 
 def day_for(timestamp):
@@ -13,7 +14,7 @@ def day_for(timestamp):
 
 def compact(row):
     return {k: row.get(k) for k in ('path', 'measured_at', 'started_at', 'allocated_bytes',
-            'file_count', 'complete', 'measurement_scope')}
+            'file_count', 'complete', 'measurement_scope', 'storage_volume')}
 
 
 def remember(store, row, previous=None):
@@ -73,6 +74,7 @@ def generate(config, requested_day=None):
                                'note': 'Growth covers each displayed observed interval. Missing/changed/partial endpoints stay unknown.'},
                   'root_totals_additive': False, 'full_disk_scan_triggered': False, 'history_analysis_triggered': False,
                   'attribution': 'Temporal/path associations; shared roots and session totals must not be added.'}
+        result = scoped_report(result,config)
         store.db.execute('INSERT OR REPLACE INTO daily_reports VALUES(?,?)', (day, json.dumps(result)))
         cutoff = (dt.datetime.now().date()-dt.timedelta(days=90)).isoformat()
         store.db.execute('DELETE FROM daily_roots WHERE day<?', (cutoff,))
