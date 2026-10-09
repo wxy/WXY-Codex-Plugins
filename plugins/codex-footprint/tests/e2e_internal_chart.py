@@ -125,7 +125,7 @@ def main():
 try {const page=await browser.newPage();const evidence=[];
 for (const width of [400,1100]) {await page.setViewportSize({width,height:950});await page.goto(process.argv[2]);
 for (const range of ['1h','24h','7d']) {await page.locator('[data-range="'+range+'"]').click();
-await page.waitForFunction(r=>document.querySelectorAll('.disk-summary').length===2 && [...document.querySelectorAll('.chart-labels')].every(x=>x.dataset.range===r),range);
+await page.waitForFunction(r=>document.querySelectorAll('.disk-summary').length===2 && document.querySelectorAll('.chart-labels').length===2 && [...document.querySelectorAll('.chart-labels')].every(x=>x.dataset.range===r),range);
 const result=await page.evaluate(()=>{const labels=document.querySelector('.chart-labels');const line=document.querySelector('.chart polyline');const xs=line?line.getAttribute('points').split(' ').map(p=>Number(p.split(',')[0])):[];
 return {range:labels.dataset.range,from:Number(labels.dataset.from),to:Number(labels.dataset.to),labels:[...labels.children].map(x=>x.textContent),diskColumns:document.querySelectorAll('.disk-summary').length,metricCards:document.querySelectorAll('.disk-summary .card').length,span:xs.length?Math.max(...xs)-Math.min(...xs):0,overflow:document.documentElement.scrollWidth>innerWidth+1,coverage:document.querySelector('.chart-coverage').textContent}});
 const duration={"1h":3600,"24h":86400,"7d":604800}[range];

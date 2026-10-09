@@ -31,3 +31,11 @@ python3 plugins/codex-footprint/tests/e2e_internal_chart.py --browser --output /
 All four cases passed, including browser checks at 400/1100 pixels for all three ranges: two disk columns, eight metric cards, labeled selected-window axes, no horizontal overflow and sparse records drawn at their actual times. Inputs are recreated under a system temporary directory: missing selected-disk fixture paths/aliases (no external artifact traversal), seeded multi-day minute metadata across changed device IDs, a stale unselected volume, and 30-second late-start records. Only reports persist; databases, browser profiles, scripts and processes are removed.
 
 The browser check proves headless Chrome behavior. Actual Codex in-app rendering and user acceptance remain separate surfaces. This change does not test a new OS/Codex notification delivery mechanism.
+
+## Personal installation and live panel
+
+The safe updater installed 0.4.2, restored the 0.2.0–0.4.1 cached chat entrypoints, moved the stable runtime pointer and restarted the existing user service. Configuration SHA-256 remained `e00975caa238f2739fada2bb4fc0445f41987aa0d83f27392649a333193a16de`; both saved historical analyses remained, SQLite integrity was `ok`, and the healthy worker reported native FSEvents. Unrelated marketplace plugins/catalog were unchanged.
+
+A read-only GET returned 200 and two capacity series. The internal disk retained 706 minute rows from the previous device ID plus the current-device history; 1h/24h/7d returned respectively 61/734/911 samples at the recorded checkpoint. MacSSD returned 61/207/207. These moving counts are checkpoint evidence, not future fixed assertions. No scan/history-analysis operation ran. The upgraded accounting scope requires new comparable project baselines.
+
+Headless Chrome 154.0.8037.98 with Node 24.19.0 exercised the live URL at 400/1100 pixels and all three ranges. Both columns had four independent metrics, at least three labeled x ticks and three GB y ticks, correct selected duration, no horizontal overflow, stacked narrow placement and parallel wide placement, with no page errors. Temporary screenshots were visually inspected and removed after recording this report. Codex in-app browser control was unavailable due to the host sandbox's symlink-root initialization error; no actual in-app acceptance is claimed.
