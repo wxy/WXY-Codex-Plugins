@@ -22,11 +22,23 @@ def snapshot(config,window='24h'):
     with GlobalStore(config['data_dir']) as store:
         if not store.db:
             return value
-        value['alerts'] = store.alerts()
+        value['alerts'] = store.alerts(config)
+        pending_counts=store.pending_alert_counts(config)
         if store.db.execute("SELECT 1 FROM sqlite_master WHERE name='daily_reports'").fetchone():
-            value['daily_reports'] = [json.loads(p) for (p,) in store.db.execute('SELECT payload FROM daily_reports ORDER BY day DESC LIMIT 14')]
+            from .storage_scope import scoped_report
+            value['daily_reports'] = [scoped_report(json.loads(p),config) for (p,) in store.db.execute('SELECT payload FROM daily_reports ORDER BY day DESC LIMIT 14')]
         from .chart_history import read
-        value['volume_history'],value['chart_window']=read(store,(value['volumes'] or [{}])[0].get('device'),window)
+        from .storage_scope import capacity_paths,primary_path,series_for
+        value['capacity_charts']=[]
+        for mount in capacity_paths(config):
+            volume=next((r for r in value['volumes'] if r['path']==str(mount)),{'path':str(mount),'device':None,'available_bytes':None,'label':'内置盘' if mount==primary_path() else mount.name+' 开发盘'})
+            history,meta=read(store,volume.get('device'),window,volume.get('history_paths',[str(mount)]))
+            roots=[r for r in value['roots'] if series_for(r['path'],config)==str(mount)]
+            daily=next((r for r in value['daily_reports'] if any(x.get('storage_volume')==str(mount) for x in r.get('roots',[]))),None)
+            value['capacity_charts'].append({'volume':volume,'history':history,'window':meta,'observed_roots':len(roots),'complete_roots':sum(r.get('complete',False) for r in roots),'pending_alerts':pending_counts.get(str(mount),0),'daily_report_day':daily['day'] if daily else None})
+        if value['capacity_charts']:
+            first=value['capacity_charts'][0]
+            value['volume_history'],value['chart_window']=first['history'],first['window']
         history = store.payloads('history_runs')
         if history:
             row = history[0]

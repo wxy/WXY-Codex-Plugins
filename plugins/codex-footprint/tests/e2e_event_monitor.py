@@ -119,11 +119,11 @@ def main():
         return {'explicit_polling_detects_external_writes':True}
     case('explicit_polling_fallback',polling)
     def retention(tmp,work,state,env,run,cfg,wait,start,root,count,write):
-        run('tick');cfg(retention={'max_snapshots':2});now=time.time();device=run('status')['volumes'][0]['device'];bucket=int(now//60)
+        run('tick');cfg(retention={'max_snapshots':2});now=time.time();volume=run('status')['volumes'][0];device=volume['device'];bucket=int(now//60)
         with sqlite3.connect(state/'global.sqlite3') as db:
             for i in range(1600):
                 ts=(bucket-i)*60
-                row={'path':'/fixture-volume','device':device,'available_bytes':40000000000+i*1000000,'sampled_at':ts,'total_bytes':250000000000}
+                row={'path':volume['path'],'device':device,'available_bytes':40000000000+i*1000000,'sampled_at':ts,'total_bytes':250000000000}
                 db.execute('INSERT OR REPLACE INTO volume_minutes VALUES(?,?,?,?)',(device,bucket-i,ts,json.dumps(row)))
             row={'path':'/old','device':device,'available_bytes':1,'sampled_at':now-8*86400}
             db.execute('INSERT OR REPLACE INTO volume_minutes VALUES(?,?,?,?)',(device,int(row['sampled_at']//60),row['sampled_at'],json.dumps(row)))

@@ -1,4 +1,4 @@
-# Verification and replay — 0.4.1
+# Verification and replay — 0.4.3
 
 ## Test-first black-box suites
 
@@ -10,11 +10,17 @@ python3 tests/e2e_global.py --output artifacts/global
 python3 tests/e2e_global_edges.py --output artifacts/edges
 python3 tests/e2e_monitor_dashboard.py --output artifacts/dashboard
 python3 tests/e2e_event_monitor.py --output artifacts/events  # macOS only for native cases
+python3 tests/e2e_internal_chart.py --output artifacts/capacity
+python3 tests/e2e_review_scope.py --output artifacts/review
+# Optional: --browser requires Node, Playwright and a Chrome/Chromium executable.
+# Select with NODE_PATH, CODEX_FOOTPRINT_TEST_NODE and CODEX_FOOTPRINT_TEST_CHROME.
 ```
 
 Each suite retains reports only with commands, environment/prerequisites, generated-input recipes, outcomes and necessary diagnostics. Full process/transport logs are not retained. Temporary fixtures are removed; checked-in runners recreate them. Fixtures use lower thresholds and real external writer processes, not synthetic byte counters. No native notifications run in fixture suites.
 
 The 20 legacy cases cover snapshots/accounting, hook transport, seven-tool MCP handshake, input rejection, non-destructive plans, budgets, missing roots, concurrency, privacy, retention (including interleaved snapshot/metadata hooks and linked-history integrity) and reproducible relocated archives. The 15 global cases cover stable state, concurrent sessions/projects, fair sliced progress, external growth, alert silence/re-alert/ack, missing endpoints, worker lock/health, explicit pre-enable archived evidence and inode deduplication, new MCP history operation and monitoring-off analysis. The edge suite covers stable defaults, legacy DB preservation, root aliases, symlinks, invalid config fail-open, exclusions, bounded partial history, worker crash recovery, long tool polling, host disable, a separate notification probe, scope-change baselines real explicit refresh and full bounded budget use with many roots.
+
+The capacity suite checks selected development-disk admission, other external-disk exclusion, separate metrics/series, history across changed device IDs, all three range windows, metadata-only reports and (optionally) real browser axes/sparse coverage at 400/1100 pixels.
 
 New behavior scenarios are written/run failing before corresponding runtime changes. Existing legacy tests are preserved. Optional existing unit regressions are supplementary and are not real-host acceptance.
 
@@ -26,7 +32,7 @@ From WXY repository root, with a compatible Codex CLI available:
 python3 tests/e2e_codex_footprint_marketplace.py --output test-artifacts/codex-footprint/marketplace
 ```
 
-Creates/removes a disposable Codex profile, installs the actual WXY entry, compares source hashes, confirms unconfigured installation stays inactive and runs all five suites from its installed cache. Reports include CLI version/commands/install receipt/source HEAD. No personal settings, hook trust or model calls are changed.
+Creates/removes a disposable Codex profile, installs the actual WXY entry, compares source hashes, confirms unconfigured installation stays inactive and runs all seven suites from its installed cache. Reports include CLI version/commands/install receipt/source HEAD. No personal settings, hook trust or model calls are changed.
 
 ## Real Desktop acceptance
 

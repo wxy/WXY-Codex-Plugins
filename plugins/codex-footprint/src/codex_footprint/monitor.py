@@ -15,8 +15,9 @@ from . import __version__
 from .config import data_directory, OBSERVER, THRESHOLDS, RETENTION, number
 from .global_store import GlobalStore
 from .inventory import Cycle
+from .storage_scope import monitored_path, primary_path, capacity_paths, current_volumes, series_for
 
-MONITOR={'interval_seconds':2,'refresh_seconds':60,'slice_entries':5000,'slice_seconds':0.02,'autostart':True,'event_backend':'auto','reconcile_seconds':1800}
+MONITOR={'interval_seconds':2,'refresh_seconds':60,'slice_entries':5000,'slice_seconds':0.02,'autostart':True,'event_backend':'auto','reconcile_seconds':1800,'development_volume':None}
 NOTIFICATIONS={'backend':'desktop','cooldown_seconds':3600,'material_growth_bytes':256*1024**2,'minimum_free_bytes':10*1024**3,'codex_context':True}
 HISTORY={'max_files':2000,'max_records':100000,'max_seconds':10,'max_entries':100000}
 
@@ -49,6 +50,7 @@ def normalize(raw,data,path):
             'observer':merged(raw.get('observer',{}),OBSERVER,'observer')}
     m=config['monitor']; number(m['interval_seconds'],'interval_seconds',0.01,3600); number(m['refresh_seconds'],'refresh_seconds',0,86400)
     number(m['slice_entries'],'slice_entries',1,10000,True); number(m['slice_seconds'],'slice_seconds',0.001,1)
+    if m['development_volume'] is not None and (not isinstance(m['development_volume'],str) or not Path(m['development_volume']).is_absolute()):raise ValueError('development_volume must be an absolute volume path or null')
     if type(m['autostart']) is not bool:raise ValueError('autostart must be boolean')
     if m['event_backend'] not in ('auto','polling'):raise ValueError('event_backend must be auto or polling')
     number(m['reconcile_seconds'],'reconcile_seconds',1,86400)
@@ -78,7 +80,7 @@ def normalize(raw,data,path):
         if not candidate.is_absolute() or candidate==Path(candidate.anchor) or candidate==Path.home() or candidate.is_symlink():raise ValueError('Choose a real development directory; global capacity is sampled separately')
         p=candidate.resolve()
         if p==Path(p.anchor) or p==Path.home():raise ValueError('Choose a development directory rather than disk/home')
-        if p==data or data in p.parents:continue
+        if p==data or data in p.parents or not monitored_path(p,config):continue
         parts=p.parts
         if any(parts[:len(rparts)]==rparts for _,rparts in roots):continue
         roots=[(r,rparts) for r,rparts in roots if rparts[:len(parts)]!=parts]; roots.append((p,parts))
@@ -93,12 +95,13 @@ def discover(config):
     home=Path.home();codex=Path(os.environ.get('CODEX_HOME',str(home/'.codex')))
     candidates += [str(p) for p in (codex,home/'Library/Developer',home/'Library/Caches',home/'.cache',home/'.npm',home/'.gradle',home/'.cargo',Path('/usr/local/Cellar'),Path('/opt/homebrew/Cellar')) if p.is_dir() and not p.is_symlink()]
     develop=home/'develop'
-    if develop.is_dir():
+    if monitored_path(develop,config) and develop.is_dir():
         with os.scandir(develop) as entries:
             for i,item in enumerate(entries):
                 if i>=256:break
                 if item.is_dir(follow_symlinks=False):candidates.append(item.path)
-    value={'version':2,'enabled':True,'discovery':False,'roots':[{'path':p} for p in candidates]}
+    anchors=capacity_paths(config)
+    value={'version':2,'enabled':True,'discovery':False,'monitor':{'development_volume':str(anchors[1]) if len(anchors)>1 else None},'roots':[{'path':p} for p in candidates if monitored_path(p,config)]}
     return [str(r['path']) for r in normalize(value,config['data_dir'],config['config_path'])['roots']]
 
 
@@ -180,7 +183,7 @@ def ensure_worker(config,force=False):
 
 
 def enqueue(config,metadata,cwd):
-    if host_disabled():return
+    if host_disabled() or not monitored_path(cwd,config):return
     event=dict(metadata,cwd=str(Path(cwd).resolve()),created_at=time.time(),id=uuid.uuid4().hex)
     atomic(config['data_dir']/'spool'/(event['id']+'.json'),event);ensure_worker(config)
 
@@ -190,14 +193,15 @@ def status(config):
     data=config['data_dir'];health=worker_health(data)
     with GlobalStore(data) as store:
         sessions=store.db.execute('SELECT count(DISTINCT session) FROM events').fetchone()[0] if store.db else 0
+        roots=[r for r in store.payloads('inventory') if monitored_path(r['path'],config)]
         return {'schema_version':2,'enabled':config['enabled'],'config_path':str(config['config_path']),'data_directory':str(data),
-                'configured_roots':sorted(set([str(r['path']) for r in config['roots']]+[r['path'] for r in store.payloads('inventory')])), 'worker':health,
+                'configured_roots':sorted(set([str(r['path']) for r in config['roots']]+[r['path'] for r in roots])), 'worker':health,
                 'event_count':store.count('events'),'session_count':sessions,'snapshot_count':store.count('observations'),'history_analysis_count':store.count('history_runs'),
                 'integrity':store.db.execute('PRAGMA quick_check').fetchone()[0] if store.db else 'not_initialized',
-                'roots':store.payloads('inventory'),'volumes':store.payloads('volumes'),
+                'roots':roots,'volumes':current_volumes(store.payloads('volumes'),config),
                 'pending_events':len(list((data/'spool').glob('*.json'))) if (data/'spool').exists() else 0,
                 'notification_backend':config.get('notifications',NOTIFICATIONS)['backend'],'notification_visibility':'unverified; OS settings may suppress desktop notifications',
-                'coverage':{'hosts':'supported local Codex lifecycle events','process_ownership':False,'filesystem':'discovered roots; cross-device and unreadable paths are gaps','restart_recovery':'installed macOS login service restarts failures; otherwise next trusted hook/explicit enable'},
+                'coverage':{'hosts':'supported local Codex lifecycle events','process_ownership':False,'storage_scope':'system_and_development_volumes','filesystem':'system and selected development volume only; other removable volumes are excluded; unreadable paths are gaps','restart_recovery':'installed macOS login service restarts failures; otherwise next trusted hook/explicit enable'},
                 'deletion_supported':False,'process_attribution_supported':False,'ui_supported':True,'panel':info(config),
                 'legacy_history_preserved':(data/'footprint.sqlite3').exists()}
 
@@ -243,9 +247,9 @@ def issue(store,config,row,baseline):
         store.db.execute('INSERT INTO alerts(fingerprint,ts,payload) VALUES(?,?,?)',(fingerprint,time.time(),json.dumps(payload)))
 
 
-def volume_rows(roots):
+def volume_rows(roots,config):
     # statvfs capacity is independent of traversal and directory accounting. Same-device samples coalesce.
-    found={};paths=[Path('/System/Volumes/Data') if sys.platform=='darwin' else Path('/')]+[Path(p) for p in roots]
+    found={};paths=capacity_paths(config)
     for p in paths:
         try:
             info=p.stat();v=os.statvfs(p)
@@ -300,12 +304,12 @@ class Runner:
                 paths+=self.discovery_paths
             parts={p:Path(p).parts for p in paths}
             for (cwd,) in store.db.execute('SELECT DISTINCT cwd FROM events ORDER BY ts DESC LIMIT 256'):
-                p=Path(cwd)
+                p=Path(cwd).resolve();cwd=str(p)
                 if p==Path(p.anchor) or p==Path.home() or p==data or data in p.parents or p.is_symlink():continue
                 current=p.parts
                 if any(current[:len(parts[r])]==parts[r] for r in paths):continue
                 paths=[r for r in paths if parts[r][:len(current)]!=current];paths.append(cwd);parts[cwd]=current
-            paths=[p for p in dict.fromkeys(paths) if not set(parts[p]).intersection(config['exclude_names'])]
+            paths=[p for p in dict.fromkeys(paths) if monitored_path(p,config) and not set(parts[p]).intersection(config['exclude_names'])]
             # Compare pre-parsed path components, avoiding quadratic Path/parents construction every tick.
             all_parts={parts[p] for p in paths}
             paths=[p for p in paths if not any(parts[p][:n] in all_parts for n in range(1,len(parts[p]))) ]
@@ -351,7 +355,8 @@ class Runner:
                     row=cycle.step(min(count,remaining),deadline)
                     consumed=row['entries_visited']-before
                     remaining-=consumed;progressed=progressed or consumed>0 or row['finished']
-                    row['measurement_scope']=hashlib.sha256(json.dumps({'path':path,'state':str(data),'exclude_names':exclusions,'accounting':1},sort_keys=True).encode()).hexdigest()
+                    row['measurement_scope']=hashlib.sha256(json.dumps({'path':path,'state':str(data),'exclude_names':exclusions,'volume':series_for(path,config),'accounting':2},sort_keys=True).encode()).hexdigest()
+                    row['storage_volume']=series_for(path,config)
                     old=store.db.execute('SELECT payload FROM observations WHERE path=? ORDER BY id DESC LIMIT 1',(path,)).fetchone()
                     previous=json.loads(old[0]) if old else None
                     row['growth_bytes']=row['allocated_bytes']-previous['allocated_bytes'] if row['finished'] and row['complete'] and previous and previous['complete'] and previous.get('measurement_scope')==row['measurement_scope'] else None
@@ -364,7 +369,7 @@ class Runner:
                     if remaining<=0 or time.monotonic()>=deadline:break
                 if not progressed:break
             if time.time()-self.last_volume>=max(1,config['monitor']['interval_seconds']):
-                for row in volume_rows(paths):
+                for row in volume_rows(paths,config):
                     old=store.db.execute('SELECT payload FROM volumes WHERE path=?',(row['path'],)).fetchone()
                     previous=json.loads(old[0]) if old else None
                     row['available_change_bytes']=row['available_bytes']-previous['available_bytes'] if previous else None
@@ -381,7 +386,7 @@ class Runner:
                     store.db.execute('INSERT OR REPLACE INTO volume_minutes VALUES(?,?,?,?)',(row['device'],int(row['sampled_at']//60),row['sampled_at'],json.dumps(row)))
                 self.last_volume=time.time()
             store.prune(config['retention']['max_snapshots'],config['retention']['max_events'])
-        return {'enabled':True,'roots':len(paths),'active_cycles':len(self.cycles),'completed_roots':len(self.completed),'pending_roots':sum(p not in self.completed for p in paths),'filesystem_events':event_status,'dirty_roots':len(self.dirty)}
+        return {'enabled':True,'roots':len(paths),'active_cycles':len(self.cycles),'completed_roots':len(self.completed),'pending_roots':sum(p not in self.completed for p in paths),'filesystem_events':event_status,'dirty_roots':len(self.dirty),'storage_scope':'system_and_development_volumes'}
 
 
 def worker(max_ticks=None):
@@ -456,9 +461,9 @@ def operate(name,args=None):
                 if ack=='all':store.db.execute('UPDATE alerts SET acknowledged=1')
                 else:store.db.execute('UPDATE alerts SET acknowledged=1 WHERE id=?',(int(ack),))
                 store.db.commit()
-            return {'schema_version':2,'alerts':store.alerts()}
+            return {'schema_version':2,'alerts':store.alerts(config)}
     with GlobalStore(data) as store:
-        roots=store.payloads('inventory');history=store.payloads('history_runs');volumes=store.payloads('volumes')
+        roots=[r for r in store.payloads('inventory') if series_for(r['path'],config)];history=store.payloads('history_runs');volumes=current_volumes(store.payloads('volumes'),config)
     associations={}
     with GlobalStore(data) as store:
         if store.db:

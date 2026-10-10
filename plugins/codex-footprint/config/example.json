@@ -10,7 +10,8 @@
     "slice_seconds": 0.02,
     "autostart": true,
     "event_backend": "auto",
-    "reconcile_seconds": 1800
+    "reconcile_seconds": 1800,
+    "development_volume": null
   },
   "notifications": {
     "backend": "desktop",
