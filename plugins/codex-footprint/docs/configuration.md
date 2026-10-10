@@ -1,4 +1,4 @@
-# Global configuration — 0.4.2
+# Global configuration — 0.4.3
 
 Enable once per machine, independently of chats/projects. Missing configuration means inactive hooks. Historical investigation can still run on explicit request while monitoring is off.
 
@@ -75,3 +75,7 @@ Native mode schedules first baselines, dirty roots and low-frequency reconciliat
 The panel defaults to 24 hours and supports 1 hour/7 days. Capacity history is stored by volume and minute for seven days independently of `retention.max_snapshots` (100,000-row safety cap). Each disk has its own available-space, observed-root, pending-alert and daily-report metrics. The x-axis always spans the selected range with time/date labels, and the y-axis has GB ticks. Minute history is matched by canonical mount path and retained aliases across device-ID changes after reboot/remount. Chart points preserve bucket extrema; gaps over five minutes and unrecorded edges remain blank. The delta describes only the actual first/last sample interval. Older missing history cannot be backfilled. Old daily root records without explicit volume attribution are not assigned a per-disk summary date based on paths that may have moved. Existing metadata is retained rather than deleted when scope narrows.
 
 `notifications.codex_context=false` disables chat hook notices independently of the OS adapter. Notices use supported `systemMessage`/`additionalContext` outputs and continue the current operation. They are globally deduplicated and do not acknowledge findings. Completely idle chats cannot receive a hook until another operation; OS notifications and the separate 21:00 scheduled summary supplement this boundary.
+
+Background `report`, `explain` and `cleanup-plan` responses share the selected-volume projection with status/panel/alerts. The latest explicit historical-analysis result remains a separate saved investigation and keeps its requested scope. Per-disk pending counts include all retained unacknowledged findings; recent details remain capped at 100. Daily coverage is recalculated after projection from selected endpoints, pending selected roots and a closed report-day window.
+
+Hook notices examine at most 100 retained unacknowledged records and submit at most three selected findings per operation. A scope/volume-availability change resets only the scan cursor. Actual emission IDs stay globally deduplicated and bounded to 20,000 (the supported retained-alert maximum); scanning/skipping an alert is never delivery evidence or acknowledgement. Legacy receipts import their concrete last-batch IDs only, not the old watermark. Older emissions without explicit ID evidence may be offered once again; visibility remains unverified.

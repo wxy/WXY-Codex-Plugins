@@ -75,7 +75,7 @@ def main():
             core=json.loads((output/'installed-e2e/report.json').read_text())
             assert core['failed']==0 and core['passed']>=19
             report['installed_core_results']={'passed':core['passed'],'failed':core['failed']}
-            for suite in ('e2e_global','e2e_global_edges','e2e_monitor_dashboard','e2e_event_monitor','e2e_internal_chart'):
+            for suite in ('e2e_global','e2e_global_edges','e2e_monitor_dashboard','e2e_event_monitor','e2e_internal_chart','e2e_review_scope'):
                 run([sys.executable,str(cache/('tests/'+suite+'.py')),'--output',str(output/suite)],timeout=90)
                 result=json.loads((output/suite/'report.json').read_text())
                 assert result.get('failed',0)==0 and result.get('result','pass')=='pass'

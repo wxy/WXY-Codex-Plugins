@@ -1,5 +1,7 @@
 """Selected system/development volumes; metadata checks only, no directory walks."""
 import copy
+import datetime as dt
+import time
 from pathlib import Path
 import sys
 
@@ -10,7 +12,7 @@ def primary_path():
 
 def _device(path):
     p = Path(path).expanduser().resolve()
-    if sys.platform == 'darwin' and str(p).startswith('/Volumes/'):
+    if str(p).startswith('/Volumes/'):
         mount = Path(*p.parts[:3])
         if not mount.exists():
             return None
@@ -34,6 +36,8 @@ def capacity_paths(config):
             p = candidate.expanduser().resolve()
             if str(p).startswith('/Volumes/'):
                 mount = Path(*p.parts[:3])
+            elif declared and not p.exists():
+                mount = p  # A pinned offline mount retains its identity on every platform.
             elif _device(p) != primary_path().stat().st_dev:
                 while not p.exists() and p != p.parent:
                     p = p.parent
@@ -69,10 +73,17 @@ def monitored_path(path, config):
 
 def series_for(path, config):
     try:
-        p = Path(path).expanduser().resolve()
+        p = Path(path).expanduser()
+        if not p.is_absolute():
+            return None
+        p = p.resolve()
         for mount in capacity_paths(config):
             if p == mount or (mount != Path('/') and mount in p.parents):
                 return str(mount)
+        # An absent historical path is not owned by the nearest existing ancestor.
+        # Explicit configured roots still expose a missing-root coverage gap.
+        if not p.exists() and not any(p == r['path'] or r['path'] in p.parents for r in config.get('roots', [])):
+            return None
         device = _device(p)
         for mount in capacity_paths(config):
             try:
@@ -111,6 +122,12 @@ def scoped_report(report, config):
     coverage['measured_roots'] = len(value['roots'])
     coverage['roots_without_complete_endpoints'] = [p for p in coverage.get('roots_without_complete_endpoints', []) if series_for(p, config)]
     coverage['storage_scope'] = 'system_and_development_volumes'
-    if not value['roots']:
-        coverage['full_day'] = False
+    try:
+        day = dt.date.fromisoformat(value['day'])
+        end = dt.datetime.combine(day + dt.timedelta(days=1), dt.time()).timestamp()
+        closed = isinstance(value.get('window_end_at'), (int, float)) and value['window_end_at'] >= end and time.time() >= end
+    except (KeyError, ValueError, TypeError, OverflowError):
+        closed = False
+    coverage['full_day'] = bool(value['roots'] and closed and not coverage['roots_without_complete_endpoints']
+                                and all(r.get('complete') and r.get('window_complete') for r in value['roots']))
     return value

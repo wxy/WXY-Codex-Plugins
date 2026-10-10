@@ -64,7 +64,7 @@ def generate(config, requested_day=None):
         known = {r['path']: r for r in store.payloads('inventory')}
         included = {r['path'] for r in roots}
         pending = sorted(set(known) - included) if day == day_for(now) else []
-        alerts = [a for a in store.alerts() if start <= a.get('latest_at', a.get('sampled_at', 0)) < end]
+        alerts = [a for a in store.alerts(config) if start <= a.get('latest_at', a.get('sampled_at', 0)) < end]
         result = {'schema_version': 3, 'report_id': 'daily-'+day, 'day': day, 'generated_at': now,
                   'window_start_at': start, 'window_end_at': min(end, now), 'timezone': time.tzname[-1],
                   'roots': sorted(roots, key=lambda r: r['allocated_bytes'], reverse=True),

@@ -1,4 +1,4 @@
-# Verification and replay — 0.4.2
+# Verification and replay — 0.4.3
 
 ## Test-first black-box suites
 
@@ -11,6 +11,7 @@ python3 tests/e2e_global_edges.py --output artifacts/edges
 python3 tests/e2e_monitor_dashboard.py --output artifacts/dashboard
 python3 tests/e2e_event_monitor.py --output artifacts/events  # macOS only for native cases
 python3 tests/e2e_internal_chart.py --output artifacts/capacity
+python3 tests/e2e_review_scope.py --output artifacts/review
 # Optional: --browser requires Node, Playwright and a Chrome/Chromium executable.
 # Select with NODE_PATH, CODEX_FOOTPRINT_TEST_NODE and CODEX_FOOTPRINT_TEST_CHROME.
 ```
@@ -31,7 +32,7 @@ From WXY repository root, with a compatible Codex CLI available:
 python3 tests/e2e_codex_footprint_marketplace.py --output test-artifacts/codex-footprint/marketplace
 ```
 
-Creates/removes a disposable Codex profile, installs the actual WXY entry, compares source hashes, confirms unconfigured installation stays inactive and runs all six suites from its installed cache. Reports include CLI version/commands/install receipt/source HEAD. No personal settings, hook trust or model calls are changed.
+Creates/removes a disposable Codex profile, installs the actual WXY entry, compares source hashes, confirms unconfigured installation stays inactive and runs all seven suites from its installed cache. Reports include CLI version/commands/install receipt/source HEAD. No personal settings, hook trust or model calls are changed.
 
 ## Real Desktop acceptance
 

@@ -461,9 +461,9 @@ def operate(name,args=None):
                 if ack=='all':store.db.execute('UPDATE alerts SET acknowledged=1')
                 else:store.db.execute('UPDATE alerts SET acknowledged=1 WHERE id=?',(int(ack),))
                 store.db.commit()
-            return {'schema_version':2,'alerts':store.alerts()}
+            return {'schema_version':2,'alerts':store.alerts(config)}
     with GlobalStore(data) as store:
-        roots=store.payloads('inventory');history=store.payloads('history_runs');volumes=store.payloads('volumes')
+        roots=[r for r in store.payloads('inventory') if series_for(r['path'],config)];history=store.payloads('history_runs');volumes=current_volumes(store.payloads('volumes'),config)
     associations={}
     with GlobalStore(data) as store:
         if store.db:
