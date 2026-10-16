@@ -17,7 +17,7 @@ from .global_store import GlobalStore
 from .inventory import Cycle
 from .storage_scope import monitored_path, primary_path, capacity_paths, current_volumes, series_for
 
-MONITOR={'interval_seconds':2,'refresh_seconds':60,'slice_entries':5000,'slice_seconds':0.02,'autostart':True,'event_backend':'auto','reconcile_seconds':1800,'development_volume':None}
+MONITOR={'interval_seconds':2,'scan_interval_seconds':0.2,'refresh_seconds':60,'slice_entries':5000,'slice_seconds':0.02,'autostart':True,'event_backend':'auto','reconcile_seconds':1800,'development_volume':None}
 NOTIFICATIONS={'backend':'desktop','cooldown_seconds':3600,'material_growth_bytes':256*1024**2,'minimum_free_bytes':10*1024**3,'codex_context':True}
 HISTORY={'max_files':2000,'max_records':100000,'max_seconds':10,'max_entries':100000}
 
@@ -49,6 +49,7 @@ def normalize(raw,data,path):
             'retention':merged(raw.get('retention',{}),RETENTION,'retention'),
             'observer':merged(raw.get('observer',{}),OBSERVER,'observer')}
     m=config['monitor']; number(m['interval_seconds'],'interval_seconds',0.01,3600); number(m['refresh_seconds'],'refresh_seconds',0,86400)
+    number(m['scan_interval_seconds'],'scan_interval_seconds',0.01,60)
     number(m['slice_entries'],'slice_entries',1,10000,True); number(m['slice_seconds'],'slice_seconds',0.001,1)
     if m['development_volume'] is not None and (not isinstance(m['development_volume'],str) or not Path(m['development_volume']).is_absolute()):raise ValueError('development_volume must be an absolute volume path or null')
     if type(m['autostart']) is not bool:raise ValueError('autostart must be boolean')
@@ -194,6 +195,11 @@ def status(config):
     with GlobalStore(data) as store:
         sessions=store.db.execute('SELECT count(DISTINCT session) FROM events').fetchone()[0] if store.db else 0
         roots=[r for r in store.payloads('inventory') if monitored_path(r['path'],config)]
+        stale=[];partial=[]
+        for row in roots:
+            annotate_coverage(row,config,store.baseline(row['path']))
+            if row['stale']:stale.append(row['path'])
+            if row['coverage_status']=='partial':partial.append(row['path'])
         return {'schema_version':2,'enabled':config['enabled'],'config_path':str(config['config_path']),'data_directory':str(data),
                 'configured_roots':sorted(set([str(r['path']) for r in config['roots']]+[r['path'] for r in roots])), 'worker':health,
                 'event_count':store.count('events'),'session_count':sessions,'snapshot_count':store.count('observations'),'history_analysis_count':store.count('history_runs'),
@@ -201,9 +207,19 @@ def status(config):
                 'roots':roots,'volumes':current_volumes(store.payloads('volumes'),config),
                 'pending_events':len(list((data/'spool').glob('*.json'))) if (data/'spool').exists() else 0,
                 'notification_backend':config.get('notifications',NOTIFICATIONS)['backend'],'notification_visibility':'unverified; OS settings may suppress desktop notifications',
-                'coverage':{'hosts':'supported local Codex lifecycle events','process_ownership':False,'storage_scope':'system_and_development_volumes','filesystem':'system and selected development volume only; other removable volumes are excluded; unreadable paths are gaps','restart_recovery':'installed macOS login service restarts failures; otherwise next trusted hook/explicit enable'},
+                'coverage':{'stale_roots':stale,'partial_roots':partial,'hosts':'supported local Codex lifecycle events','process_ownership':False,'storage_scope':'system_and_development_volumes','filesystem':'system and selected development volume only; other removable volumes are excluded; unreadable paths are gaps','restart_recovery':'installed macOS login service restarts failures; otherwise next trusted hook/explicit enable'},
                 'deletion_supported':False,'process_attribution_supported':False,'ui_supported':True,'panel':info(config),
                 'legacy_history_preserved':(data/'footprint.sqlite3').exists()}
+
+
+def annotate_coverage(row,config,baseline=None):
+    last=row.get('measured_at') or (baseline or {}).get('measured_at')
+    row['last_complete_at']=(baseline or {}).get('measured_at')
+    row['measurement_age_seconds']=max(0,time.time()-last) if last else None
+    limit=max(300,2*config.get('monitor',MONITOR).get('reconcile_seconds',1800),2*config.get('monitor',MONITOR).get('refresh_seconds',60))
+    row['stale']=bool(last and time.time()-last>limit)
+    row['coverage_status']='partial' if row.get('finished') and not row.get('complete') else 'stale' if row['stale'] else 'complete' if row.get('complete') else 'scanning'
+    return row
 
 
 def notify(config,payload):
@@ -262,10 +278,10 @@ class Runner:
     def __init__(self,config,one_shot=False):
         self.one_shot=one_shot
         import resource
-        self.config=config;self.cycles={};self.completed={};self.last_volume=0;self.cursor=0
+        self.config=config;self.cycles={};self.completed={};self.last_volume=0;self.cursor=0;self.last_prune=0;self.progress_at={}
         self.exclusions=tuple(sorted(config['exclude_names']))
         limit=resource.getrlimit(resource.RLIMIT_NOFILE)[0]
-        self.max_active=max(1,min(8,(int(limit)-64)//65)) if limit>0 else 2
+        self.max_active=max(1,min(8,(int(limit)-64)//132)) if limit>0 else 2
         self.discovery_paths=[];self.discovery_at=0;self.hot_until={}
         from .filesystem_events import Watcher
         self.watcher=Watcher();self.dirty=set()
@@ -316,6 +332,11 @@ class Runner:
             # Listen before baselines, and retain changes received during a scan for a follow-up.
             self.dirty.update(self.watcher.update(paths,config,self.one_shot));self.dirty.update(self.watcher.drain())
             self.dirty.intersection_update(paths);event_status=self.watcher.status()
+            # Native setup may have raised this process's soft limit. Each recursive
+            # level holds a directory descriptor and a scandir descriptor.
+            import resource
+            limit=resource.getrlimit(resource.RLIMIT_NOFILE)[0]
+            self.max_active=max(1,min(8,(int(limit)-64)//132)) if limit>0 else 2
             for (old_path,) in store.db.execute('SELECT path FROM inventory').fetchall():
                 if old_path not in paths:store.db.execute('DELETE FROM inventory WHERE path=?',(old_path,))
             # Excluded names are applied by path boundaries discovered during the walk, not shell patterns.
@@ -323,18 +344,16 @@ class Runner:
                 if key not in paths:self.cycles.pop(key).close()
             deadline=time.monotonic()+config['monitor']['slice_seconds']
             remaining=config['monitor']['slice_entries']
-            count=max(1,remaining//max(1,min(len(paths),self.max_active)))
-            ordered=sorted(paths,key=lambda p:self.completed.get(p,0))
-            if ordered:
-                offset=self.cursor%len(ordered);ordered=ordered[offset:]+ordered[:offset];self.cursor+=1
             self.hot_until={p:t for p,t in self.hot_until.items() if t>time.time()}
             hot_ancestors=set()
             for cwd in self.hot_until:
                 cwd_parts=Path(cwd).parts
                 hot_ancestors.update(cwd_parts[:n] for n in range(1,len(cwd_parts)+1))
-            hot={path for path in paths if parts[path] in hot_ancestors}|self.dirty
-            # Recent lifecycle work gets the first allocation; every active root keeps a fair allocation.
-            ordered.sort(key=lambda p:p not in hot)
+            urgent={path for path in paths if parts[path] in hot_ancestors}
+            hot=urgent|self.dirty
+            # An old/unmeasured root always precedes a recently completed hot root.
+            # Rotate active work separately, so one large tree cannot consume every slice.
+            ordered=sorted(paths,key=lambda p:(p not in urgent,self.completed.get(p,0),p not in hot,p))
             from .summaries import remember
             finished_this_step=set()
             while remaining>0 and time.monotonic()<deadline:
@@ -346,26 +365,38 @@ class Runner:
                         elapsed=time.time()-self.completed.get(path,0)
                         due=path not in self.completed or elapsed>=config['monitor']['reconcile_seconds'] or (path in self.dirty and elapsed>=min(config['monitor']['refresh_seconds'],2))
                     else:due=time.time()-self.completed.get(path,0)>=pause
-                    if path not in self.cycles and len(self.cycles)<self.max_active and due:
+                    # Reserve admission for a later lifecycle-active project. Cold
+                    # cursors retain the other slots and are never discarded.
+                    capacity=self.max_active if self.one_shot or path in urgent else max(1,self.max_active-1)
+                    if path not in self.cycles and len(self.cycles)<capacity and due:
                         self.cycles[path]=Cycle(path,data,config['exclude_names'])
+                        self.cycles[path].row['storage_volume']=series_for(path,config)
+                        self.cycles[path].row['measurement_scope']=hashlib.sha256(json.dumps({'path':path,'state':str(data),'exclude_names':exclusions,'volume':self.cycles[path].row['storage_volume'],'accounting':2},sort_keys=True).encode()).hexdigest()
                         self.dirty.discard(path)
-                    cycle=self.cycles.get(path)
-                    if not cycle:continue
+                active=list(self.cycles)
+                if active:
+                    offset=self.cursor%len(active);active=active[offset:]+active[:offset];self.cursor+=1
+                for index,path in enumerate(active):
+                    cycle=self.cycles[path]
                     before=cycle.row['entries_visited']
-                    row=cycle.step(min(count,remaining),deadline)
+                    slots=len(active)-index
+                    quantum=time.monotonic()+max(0,deadline-time.monotonic())/slots
+                    row=cycle.step(max(1,remaining//slots),min(deadline,quantum))
                     consumed=row['entries_visited']-before
                     remaining-=consumed;progressed=progressed or consumed>0 or row['finished']
-                    row['measurement_scope']=hashlib.sha256(json.dumps({'path':path,'state':str(data),'exclude_names':exclusions,'volume':series_for(path,config),'accounting':2},sort_keys=True).encode()).hexdigest()
-                    row['storage_volume']=series_for(path,config)
-                    old=store.db.execute('SELECT payload FROM observations WHERE path=? ORDER BY id DESC LIMIT 1',(path,)).fetchone()
-                    previous=json.loads(old[0]) if old else None
+                    previous=store.baseline(path,row['measurement_scope']) if row['finished'] else None
                     row['growth_bytes']=row['allocated_bytes']-previous['allocated_bytes'] if row['finished'] and row['complete'] and previous and previous['complete'] and previous.get('measurement_scope')==row['measurement_scope'] else None
-                    store.db.execute('INSERT OR REPLACE INTO inventory VALUES(?,?)',(path,json.dumps(row)))
+                    row['baseline_at']=previous['measured_at'] if previous else None
+                    row['latest_at']=row['measured_at']
+                    if row['finished'] or time.monotonic()-self.progress_at.get(path,0)>=1:
+                        store.db.execute('INSERT OR REPLACE INTO inventory VALUES(?,?)',(path,json.dumps(row)))
+                        self.progress_at[path]=time.monotonic()
                     if row['finished']:
                         finished_this_step.add(path)
                         store.db.execute('INSERT INTO observations(path,ts,payload) VALUES(?,?,?)',(path,time.time(),json.dumps(row)))
                         remember(store,row,previous)
-                        issue(store,config,row,previous);self.completed[path]=time.time();self.cycles.pop(path).close()
+                        issue(store,config,row,previous);store.remember_baseline(row)
+                        self.completed[path]=time.time();self.cycles.pop(path).close()
                     if remaining<=0 or time.monotonic()>=deadline:break
                 if not progressed:break
             if time.time()-self.last_volume>=max(1,config['monitor']['interval_seconds']):
@@ -385,7 +416,9 @@ class Runner:
                     store.db.execute('INSERT INTO volume_history(ts,payload) VALUES(?,?)',(time.time(),json.dumps(row)))
                     store.db.execute('INSERT OR REPLACE INTO volume_minutes VALUES(?,?,?,?)',(row['device'],int(row['sampled_at']//60),row['sampled_at'],json.dumps(row)))
                 self.last_volume=time.time()
-            store.prune(config['retention']['max_snapshots'],config['retention']['max_events'])
+            if finished_this_step or time.monotonic()-self.last_prune>=60:
+                store.prune(config['retention']['max_snapshots'],config['retention']['max_events']);self.last_prune=time.monotonic()
+            else:store.db.commit()
         return {'enabled':True,'roots':len(paths),'active_cycles':len(self.cycles),'completed_roots':len(self.completed),'pending_roots':sum(p not in self.completed for p in paths),'filesystem_events':event_status,'dirty_roots':len(self.dirty),'storage_scope':'system_and_development_volumes'}
 
 
@@ -411,7 +444,10 @@ def worker(max_ticks=None):
                     due(runner.config)
                     atomic(data/'worker.json',{'pid':os.getpid(),'version':__version__,'last_tick':time.time(),'last_error':None,'progress':result})
                     if not result['enabled'] or (max_ticks and ticks>=max_ticks):break
-                    time.sleep(runner.config['monitor']['interval_seconds'])
+                    delay=runner.config['monitor']['interval_seconds']
+                    if result.get('active_cycles') or result.get('pending_roots'):
+                        delay=min(delay,runner.config['monitor']['scan_interval_seconds'])
+                    time.sleep(delay)
                 except Exception as exc:
                     atomic(data/'worker.json',{'pid':os.getpid(),'version':__version__,'last_tick':time.time(),'last_error':type(exc).__name__})
                     break

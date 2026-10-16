@@ -121,6 +121,11 @@ def scoped_report(report, config):
     coverage = value.setdefault('coverage', {})
     coverage['measured_roots'] = len(value['roots'])
     coverage['roots_without_complete_endpoints'] = [p for p in coverage.get('roots_without_complete_endpoints', []) if series_for(p, config)]
+    for key in ('stale_roots','partial_roots'):
+        if key in coverage:coverage[key]=[p for p in coverage[key] if series_for(p,config)]
+    if 'same_day_comparable_roots' in coverage:
+        coverage['same_day_comparable_roots']=sum(r.get('growth_bytes') is not None for r in value['roots'])
+        coverage['cross_day_comparable_roots']=sum(r.get('comparison_status')=='cross_day' for r in value['roots'])
     coverage['storage_scope'] = 'system_and_development_volumes'
     try:
         day = dt.date.fromisoformat(value['day'])

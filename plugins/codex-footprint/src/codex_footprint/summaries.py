@@ -21,6 +21,11 @@ def remember(store, row, previous=None):
     if not row.get('complete') or not row.get('measured_at'):
         return
     day = day_for(row['measured_at'])
+    if (previous and previous.get('complete') and previous.get('measured_at') and
+            day_for(previous['measured_at']) < day and previous.get('measurement_scope') == row.get('measurement_scope')):
+        existing=store.db.execute('SELECT payload FROM daily_baselines WHERE day=? AND path=?',(day,row['path'])).fetchone()
+        if not existing or json.loads(existing[0])['measured_at'] < previous['measured_at']:
+            store.db.execute('INSERT OR REPLACE INTO daily_baselines VALUES(?,?,?)',(day,row['path'],json.dumps(compact(previous))))
     old = store.db.execute('SELECT first_payload,last_payload FROM daily_roots WHERE day=? AND path=?', (day, row['path'])).fetchone()
     value = compact(row)
     if old:
@@ -50,20 +55,35 @@ def generate(config, requested_day=None):
     end = dt.datetime.combine(date + dt.timedelta(days=1), dt.time.min).timestamp()
     with GlobalStore(config['data_dir'], True) as store:
         # Backfill only retained monitor metadata, including upgrades from 0.2.0.
-        for (payload,) in store.db.execute('SELECT payload FROM observations ORDER BY id').fetchall():
-            remember(store, json.loads(payload))
+        prior={}
+        for (payload,) in store.db.execute('SELECT payload FROM observations ORDER BY ts,id').fetchall():
+            row=json.loads(payload)
+            remember(store,row,prior.get(row['path']))
+            if row.get('complete'):prior[row['path']]=row
         roots = []
         for path, first_raw, last_raw in store.db.execute('SELECT path,first_payload,last_payload FROM daily_roots WHERE day=?', (day,)):
             first, last = json.loads(first_raw), json.loads(last_raw)
             comparable = (last['measured_at'] > first['measured_at'] and
                           first.get('measurement_scope') and first['measurement_scope'] == last.get('measurement_scope'))
+            previous=store.db.execute('SELECT payload FROM daily_baselines WHERE day=? AND path=?',(day,path)).fetchone()
+            if not previous:
+                previous=store.db.execute('SELECT last_payload FROM daily_roots WHERE day<? AND path=? ORDER BY day DESC LIMIT 1',(day,path)).fetchone()
+            previous=json.loads(previous[0]) if previous else None
+            cross=bool(previous and previous.get('measured_at',start)>=0 and previous['measured_at']<start and previous.get('measurement_scope') and previous['measurement_scope']==last.get('measurement_scope'))
             roots.append(dict(last, growth_bytes=last['allocated_bytes']-first['allocated_bytes'] if comparable else None,
+                              cross_day_growth_bytes=last['allocated_bytes']-previous['allocated_bytes'] if cross else None,
+                              cross_day_baseline_at=previous['measured_at'] if cross else None,
+                              comparison_status='same_day' if comparable else 'cross_day' if cross else 'scope_changed' if first.get('measurement_scope')!=last.get('measurement_scope') else 'missing_baseline',
                               baseline_at=first['measured_at'], latest_at=last['measured_at'],
                               observed_seconds=last['measured_at']-first['measured_at'],
                               finished=True, window_complete=bool(comparable and first['measured_at']<=start+60 and last['measured_at']>=end-60)))
         known = {r['path']: r for r in store.payloads('inventory')}
         included = {r['path'] for r in roots}
         pending = sorted(set(known) - included) if day == day_for(now) else []
+        from .monitor import annotate_coverage
+        for row in roots:
+            if day==day_for(now):annotate_coverage(row,config)
+            else:row.update(stale=False,coverage_status='complete')
         alerts = [a for a in store.alerts(config) if start <= a.get('latest_at', a.get('sampled_at', 0)) < end]
         result = {'schema_version': 3, 'report_id': 'daily-'+day, 'day': day, 'generated_at': now,
                   'window_start_at': start, 'window_end_at': min(end, now), 'timezone': time.tzname[-1],
@@ -71,6 +91,10 @@ def generate(config, requested_day=None):
                   'alerts': alerts, 'volumes': store.payloads('volumes'),
                   'coverage': {'full_day': bool(roots and now>=end and not pending and all(r['window_complete'] for r in roots)),
                                'measured_roots': len(roots), 'roots_without_complete_endpoints': pending,
+                               'same_day_comparable_roots':sum(r['growth_bytes'] is not None for r in roots),
+                               'cross_day_comparable_roots':sum(r['comparison_status']=='cross_day' for r in roots),
+                               'stale_roots':[r['path'] for r in roots if r['stale']],
+                               'partial_roots':[r['path'] for r in known.values() if r.get('finished') and not r.get('complete')],
                                'note': 'Growth covers each displayed observed interval. Missing/changed/partial endpoints stay unknown.'},
                   'root_totals_additive': False, 'full_disk_scan_triggered': False, 'history_analysis_triggered': False,
                   'attribution': 'Temporal/path associations; shared roots and session totals must not be added.'}
@@ -78,6 +102,7 @@ def generate(config, requested_day=None):
         store.db.execute('INSERT OR REPLACE INTO daily_reports VALUES(?,?)', (day, json.dumps(result)))
         cutoff = (dt.datetime.now().date()-dt.timedelta(days=90)).isoformat()
         store.db.execute('DELETE FROM daily_roots WHERE day<?', (cutoff,))
+        store.db.execute('DELETE FROM daily_baselines WHERE day<?', (cutoff,))
         store.db.execute('DELETE FROM daily_reports WHERE day<?', (cutoff,))
         store.db.commit()
         return result
@@ -92,5 +117,5 @@ def due(config):
     with GlobalStore(config['data_dir']) as store:
         exists = store.db and store.db.execute("SELECT 1 FROM sqlite_master WHERE name='daily_reports'").fetchone()
         row = store.db.execute('SELECT payload FROM daily_reports WHERE day=?', (day,)).fetchone() if exists else None
-    if not row or json.loads(row[0])['generated_at'] < due_at:
+    if not row or json.loads(row[0])['generated_at'] < due_at or 'cross_day_comparable_roots' not in json.loads(row[0]).get('coverage',{}):
         generate(config, day)

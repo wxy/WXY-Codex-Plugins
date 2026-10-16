@@ -81,6 +81,11 @@ def main():
                 assert result.get('failed',0)==0 and result.get('result','pass')=='pass'
                 report[suite]={'passed':result.get('passed',len(result.get('cases',[]))),'failed':result.get('failed',0)}
             report['installation']=installed
+            reliability_path=output/'reliability/report.json'
+            run([sys.executable,str(cache/'tests/e2e_monitor_reliability.py'),'--output',str(reliability_path)],timeout=90)
+            reliability=json.loads(reliability_path.read_text())
+            assert reliability['failed']==0,reliability
+            report['monitor_reliability']={'passed':reliability['passed'],'failed':0}
             run([sys.executable,str(REPO/'tests/e2e_footprint_safe_upgrade.py'),'--output',str(output/'safe-upgrade')],timeout=90)
             upgrade=json.loads((output/'safe-upgrade/report.json').read_text())
             assert upgrade['result']=='pass'

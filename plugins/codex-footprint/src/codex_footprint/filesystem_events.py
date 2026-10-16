@@ -37,9 +37,14 @@ class NativeStream:
                     values=C.cast(event_paths,C.POINTER(C.c_char_p));dirty=set();loss=False
                     for i in range(n):
                         # Dropped/wrapped events or a moved root invalidate all watched-root hints.
-                        if flags[i]&0xef:loss=True;continue
+                        if flags[i]&0xee:loss=True;continue
                         path=os.fsdecode(values[i]).rstrip('/')
                         if path==self.state or path.startswith(self.state+'/') or self.exclusions.intersection(path.split('/')):continue
+                        # MustScanSubDirs alone is a recursively coalesced local hint,
+                        # not proof that the stream dropped events. A common ancestor
+                        # can cover multiple watched roots; retain all affected children.
+                        if flags[i]&1:
+                            dirty.update(root for root in self.root_set if root.startswith(path+'/'))
                         while path and path!='/':
                             if path in self.root_set:dirty.add(path);break
                             path=path.rpartition('/')[0]

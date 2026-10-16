@@ -9,15 +9,19 @@ import time
 
 def files(root, excluded, exclude_names=()):
     """Yield metadata/errors with bounded depth; never follow a path symlink."""
-    root=Path(root)
+    root=os.fspath(root)
+    # State exclusion is a lexical subtree check after the root has been resolved.
+    # Building every file's Path.parents dominated metadata traversal on deep trees.
+    excluded=tuple((os.fspath(p),os.fspath(p)+os.sep) for p in excluded)
+    exclude_names=set(exclude_names)
     def walk(fd,path,device,depth):
         if depth>64:
             yield ('error',{'kind':'depth_limit','path':str(path)}); return
         try:
             with os.scandir(fd) as entries:
                 for entry in entries:
-                    child=path/entry.name
-                    if entry.name in exclude_names or any(child==p or p in child.parents for p in excluded):
+                    child=os.path.join(path,entry.name)
+                    if entry.name in exclude_names or any(child==p or child.startswith(prefix) for p,prefix in excluded):
                         yield ('skip',{}); continue
                     try:
                         info=entry.stat(follow_symlinks=False)

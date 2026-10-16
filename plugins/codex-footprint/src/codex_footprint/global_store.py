@@ -38,12 +38,24 @@ class GlobalStore:
             self.db=sqlite3.connect(self.path,timeout=3)
             if self.db.execute('PRAGMA user_version').fetchone()[0]!=1:self.close();raise ValueError('Unsupported global history schema')
             migrate=not self.db.execute("SELECT 1 FROM sqlite_master WHERE name='volume_minutes'").fetchone()
+            seed_baselines=not self.db.execute("SELECT 1 FROM sqlite_master WHERE name='baselines'").fetchone()
             self.db.executescript('''
                 CREATE TABLE IF NOT EXISTS daily_roots(day TEXT NOT NULL,path TEXT NOT NULL,first_payload TEXT NOT NULL,last_payload TEXT NOT NULL,PRIMARY KEY(day,path));
                 CREATE TABLE IF NOT EXISTS daily_reports(day TEXT PRIMARY KEY,payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS volume_minutes(device INTEGER NOT NULL,bucket INTEGER NOT NULL,ts REAL NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(device,bucket));
                 CREATE INDEX IF NOT EXISTS volume_minutes_time ON volume_minutes(ts);
+                CREATE TABLE IF NOT EXISTS baselines(path TEXT PRIMARY KEY,ts REAL NOT NULL,payload TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS daily_baselines(day TEXT NOT NULL,path TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(day,path));
             ''')
+            if seed_baselines:
+                # Preserve the most recent complete endpoint independently of rolling history.
+                for (payload,) in self.db.execute('SELECT payload FROM observations ORDER BY ts').fetchall():
+                    self.remember_baseline(json.loads(payload))
+                for row in self.payloads('inventory'):
+                    self.remember_baseline(row)
+                for first,last in self.db.execute('SELECT first_payload,last_payload FROM daily_roots').fetchall():
+                    self.remember_baseline(json.loads(first));self.remember_baseline(json.loads(last))
+                self.db.commit()
             if migrate:
                 for ts,payload in self.db.execute('SELECT ts,payload FROM volume_history ORDER BY id').fetchall():
                     row=json.loads(payload)
@@ -64,6 +76,18 @@ class GlobalStore:
     def count(self,table):
         if table not in {'events','observations','alerts','history_runs'}:raise ValueError('Invalid count')
         return self.db.execute('SELECT count(*) FROM '+table).fetchone()[0] if self.db else 0
+    def remember_baseline(self,row):
+        if row.get('complete') and row.get('measured_at') and row.get('measurement_scope'):
+            self.db.execute('INSERT INTO baselines VALUES(?,?,?) ON CONFLICT(path) DO UPDATE SET ts=excluded.ts,payload=excluded.payload WHERE excluded.ts>baselines.ts',
+                            (row['path'],row['measured_at'],json.dumps(row)))
+    def baseline(self,path,scope=None):
+        if not self.db:return None
+        if self.db.execute("SELECT 1 FROM sqlite_master WHERE name='baselines'").fetchone():
+            value=self.db.execute('SELECT payload FROM baselines WHERE path=?',(path,)).fetchone()
+            row=json.loads(value[0]) if value else None
+        else:
+            row=next((json.loads(p) for (p,) in self.db.execute('SELECT payload FROM observations WHERE path=? ORDER BY ts DESC',(path,)) if json.loads(p).get('complete')),None)
+        return row if row and (scope is None or row.get('measurement_scope')==scope) else None
     def alerts(self,config=None):
         if not self.db:return []
         from .codex_notices import receipt
@@ -93,6 +117,7 @@ class GlobalStore:
         for table in ('observations','volume_history','alerts','history_runs'):
             self.db.execute('DELETE FROM '+table+' WHERE id NOT IN (SELECT id FROM '+table+' ORDER BY id DESC LIMIT ?)',(limit,))
         self.db.execute('DELETE FROM events WHERE id NOT IN (SELECT id FROM events ORDER BY ts DESC LIMIT ?)',(event_limit,))
+        self.db.execute('DELETE FROM baselines WHERE path NOT IN (SELECT path FROM inventory) AND path NOT IN (SELECT path FROM baselines ORDER BY ts DESC LIMIT 512)')
         self.db.execute('DELETE FROM volume_minutes WHERE ts<?',(time.time()-7*86400,))
         if self.db.execute('SELECT count(*) FROM volume_minutes').fetchone()[0]>100000:
             self.db.execute('DELETE FROM volume_minutes WHERE rowid NOT IN (SELECT rowid FROM volume_minutes ORDER BY ts DESC LIMIT 100000)')

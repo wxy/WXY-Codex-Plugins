@@ -1,4 +1,4 @@
-# Global configuration — 0.4.3
+# Global configuration — 0.4.4
 
 Enable once per machine, independently of chats/projects. Missing configuration means inactive hooks. Historical investigation can still run on explicit request while monitoring is off.
 
@@ -37,7 +37,8 @@ See the disabled `config/example.json`. Roots are absolute/`~` paths; nested pat
 | --- | --- | --- |
 | `enabled` | false in example | Global observation switch |
 | `discovery` | true | Known development roots plus event workspaces |
-| `monitor.interval_seconds` | 2 | Tick pause |
+| `monitor.interval_seconds` | 2 | Idle/capacity pause |
+| `monitor.scan_interval_seconds` | 0.2 | Pause while bounded walks or first measurements are pending |
 | `monitor.refresh_seconds` | 60 | Polling pause; native dirty-root debounce uses at most 2 seconds |
 | `monitor.event_backend` | auto | Public macOS FSEvents when available, otherwise polling; `polling` opts out |
 | `monitor.reconcile_seconds` | 1,800 | Native quiet-root reconciliation interval |
@@ -60,7 +61,7 @@ See the disabled `config/example.json`. Roots are absolute/`~` paths; nested pat
 | `retention.max_snapshots` | 500 | Global finished observations/samples/findings/results per table |
 | `retention.max_events` | 5,000 | Global retained event limit |
 
-Legacy `observer` options apply only to version-1 snapshots; version-2 scheduling uses `monitor`. A large first baseline may take multiple ticks. Incomplete roots expose progress/errors and unknown growth. Running walks resume across ticks; restart begins unfinished walks again. Whole-volume capacity changes are not Codex-attributed growth.
+Legacy `observer` options apply only to version-1 snapshots; version-2 scheduling uses `monitor`. A large first baseline may take multiple ticks. Active scans use a shared 20-ms slice every 0.2 seconds; idle work keeps the 2-second pause. Scheduling, SQLite and filesystem calls add overhead, so neither value is a CPU ceiling or detection deadline. Latest complete endpoints survive rolling snapshot pruning; partial measurements never replace them. Status lists stale and partial roots separately. A complete endpoint older than twice the configured reconciliation/refresh interval (at least five minutes, one hour by default) is labeled stale. Incomplete roots expose progress/errors and unknown growth. Running walks resume across ticks; restart begins unfinished walks again. Whole-volume capacity changes are not Codex-attributed growth.
 
 Run `install-service` explicitly on macOS to install `~/Library/LaunchAgents/xingyu.wang.codexfootprint.plist` and a stable `state/runtime` link to this plugin. It runs as your user, starts at login and restarts unexpected exits with a 10-second throttle. `service-plan` previews without changes; `remove-service` removes only that service and preserves history. After disabling and re-enabling, run `install-service` again to reload the service. Without a service, workers start on enable/trusted hooks/explicit scan. Existing explicit monitor settings are preserved on upgrade; adjust them intentionally to adopt the new defaults. Global disable (or WXY host plugin global toggle off) stops the worker without erasing history. No per-chat setting changes are needed.
 
@@ -68,7 +69,7 @@ Run `install-service` explicitly on macOS to install `~/Library/LaunchAgents/xin
 
 The elected worker serves `http://127.0.0.1:8766/`; `dashboard` returns its URL and retained state. `CODEX_FOOTPRINT_PANEL_PORT` can override the port. `panel --port PORT` starts a standalone read-only server, without starting observation. A port conflict does not stop monitoring; unavailable panel status is explicit. Only fixed GET routes are accepted; no arbitrary files or write endpoints are exposed. Local applications can read the endpoint; there is no remote binding or account.
 
-`daily-report [--day YYYY-MM-DD]` updates one idempotent daily report from monitor metadata only, including while observation is disabled. Daily first/last complete endpoints survive short snapshot retention for 90 days. Unknown/changed-scope endpoints cannot produce growth. Dates with no records remain empty. The worker prepares today's report at/after 21:00 local time. Configure a separate Codex daily scheduled chat at 21:00 to refresh and report it through Codex Activity; this is not a whole-disk scan. Computer/app availability affects scheduled delivery; there is no promise of delivery while asleep.
+`daily-report [--day YYYY-MM-DD]` updates one idempotent daily report from monitor metadata only, including while observation is disabled. Daily first/last complete endpoints survive short snapshot retention for 90 days. Unknown/changed-scope endpoints cannot produce growth. When today has only one complete measurement but a matching pre-day baseline exists, the panel shows an explicitly labeled cross-day change and its real start/end times. It is not counted as same-day growth or full-day coverage. Dates with no records remain empty. The worker prepares today's report at/after 21:00 local time. Configure a separate Codex daily scheduled chat at 21:00 to refresh and report it through Codex Activity; this is not a whole-disk scan. Computer/app availability affects scheduled delivery; there is no promise of delivery while asleep.
 
 Native mode schedules first baselines, dirty roots and low-frequency reconciliation; it does not repeatedly walk quiet roots on each chat operation. Polling fallback retains hot-project priority and a two-second minimum refresh pause; cold roots retain the configured pause. A root still needs a complete walk and comparable baseline. Neither the tick pause nor panel refresh is a guaranteed anomaly-detection deadline.
 
