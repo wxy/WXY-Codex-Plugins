@@ -121,4 +121,3 @@ def main():
     print(json.dumps({'passed':report['passed'],'failed':report['failed'],'report':str(out)}))
     return int(report['failed']!=0)
 if __name__=='__main__':raise SystemExit(main())
-
