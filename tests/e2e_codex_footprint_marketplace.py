@@ -86,6 +86,11 @@ def main():
             reliability=json.loads(reliability_path.read_text())
             assert reliability['failed']==0,reliability
             report['monitor_reliability']={'passed':reliability['passed'],'failed':0}
+            recovery_path=output/'runtime-recovery/report.json'
+            run([sys.executable,str(cache/'tests/e2e_runtime_recovery.py'),'--output',str(recovery_path)],timeout=90)
+            recovery=json.loads(recovery_path.read_text())
+            assert recovery['failed']==0,recovery
+            report['runtime_recovery']={'passed':recovery['passed'],'failed':0}
             run([sys.executable,str(REPO/'tests/e2e_footprint_safe_upgrade.py'),'--output',str(output/'safe-upgrade')],timeout=90)
             upgrade=json.loads((output/'safe-upgrade/report.json').read_text())
             assert upgrade['result']=='pass'

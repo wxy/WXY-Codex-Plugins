@@ -55,8 +55,22 @@ def capacity_paths(config):
     return paths
 
 
+def system_vm_path(path):
+    # macOS stores swap on a separate APFS volume in the system container.
+    # It belongs to the system-disk series, not a third removable-disk series.
+    if sys.platform != 'darwin':return False
+    text=str(Path(path).expanduser())
+    anchor=Path('/System/Volumes/VM')
+    if text!=str(anchor) and not text.startswith(str(anchor)+'/'):return False
+    try:
+        p=Path(text).resolve()
+        return anchor.is_dir() and (p==anchor or anchor in p.parents)
+    except (OSError,RuntimeError):return False
+
+
 def monitored_path(path, config):
     try:
+        if system_vm_path(path):return True
         device = _device(path)
         if device is None:
             return False
@@ -77,6 +91,7 @@ def series_for(path, config):
         if not p.is_absolute():
             return None
         p = p.resolve()
+        if system_vm_path(p):return str(primary_path())
         for mount in capacity_paths(config):
             if p == mount or (mount != Path('/') and mount in p.parents):
                 return str(mount)

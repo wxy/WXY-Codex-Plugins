@@ -47,7 +47,9 @@ class GlobalStore:
                 CREATE TABLE IF NOT EXISTS baselines(path TEXT PRIMARY KEY,ts REAL NOT NULL,payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS daily_baselines(day TEXT NOT NULL,path TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(day,path));
             ''')
-            if seed_baselines:
+            self.db.execute('CREATE TABLE IF NOT EXISTS runtime_migrations(name TEXT PRIMARY KEY)')
+            recovered=self.db.execute("SELECT 1 FROM runtime_migrations WHERE name='complete-baselines-v2'").fetchone()
+            if seed_baselines or not recovered:
                 # Preserve the most recent complete endpoint independently of rolling history.
                 for (payload,) in self.db.execute('SELECT payload FROM observations ORDER BY ts').fetchall():
                     self.remember_baseline(json.loads(payload))
@@ -55,6 +57,7 @@ class GlobalStore:
                     self.remember_baseline(row)
                 for first,last in self.db.execute('SELECT first_payload,last_payload FROM daily_roots').fetchall():
                     self.remember_baseline(json.loads(first));self.remember_baseline(json.loads(last))
+                self.db.execute("INSERT OR REPLACE INTO runtime_migrations VALUES('complete-baselines-v2')")
                 self.db.commit()
             if migrate:
                 for ts,payload in self.db.execute('SELECT ts,payload FROM volume_history ORDER BY id').fetchall():

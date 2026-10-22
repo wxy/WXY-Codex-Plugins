@@ -283,6 +283,8 @@ class Runner:
         limit=resource.getrlimit(resource.RLIMIT_NOFILE)[0]
         self.max_active=max(1,min(8,(int(limit)-64)//132)) if limit>0 else 2
         self.discovery_paths=[];self.discovery_at=0;self.hot_until={}
+        with GlobalStore(config['data_dir']) as previous:
+            self.size_hints={r['path']:(r.get('file_count',0) if r.get('complete') else max(512,r.get('file_count',0))) for r in previous.payloads('inventory')}
         from .filesystem_events import Watcher
         self.watcher=Watcher();self.dirty=set()
     def close(self):
@@ -353,7 +355,7 @@ class Runner:
             hot=urgent|self.dirty
             # An old/unmeasured root always precedes a recently completed hot root.
             # Rotate active work separately, so one large tree cannot consume every slice.
-            ordered=sorted(paths,key=lambda p:(p not in urgent,self.completed.get(p,0),p not in hot,p))
+            ordered=sorted(paths,key=lambda p:(p not in urgent,self.completed.get(p,0),p not in hot,self.size_hints.get(p,512),p))
             from .summaries import remember
             finished_this_step=set()
             while remaining>0 and time.monotonic()<deadline:
@@ -393,6 +395,7 @@ class Runner:
                         self.progress_at[path]=time.monotonic()
                     if row['finished']:
                         finished_this_step.add(path)
+                        self.size_hints[path]=row['file_count']
                         store.db.execute('INSERT INTO observations(path,ts,payload) VALUES(?,?,?)',(path,time.time(),json.dumps(row)))
                         remember(store,row,previous)
                         issue(store,config,row,previous);store.remember_baseline(row)

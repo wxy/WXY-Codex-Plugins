@@ -55,16 +55,21 @@ def main():
                     receipt['compatibility_entries'].append(old.name)
                 data=Path(os.environ.get('CODEX_FOOTPRINT_DATA',str(Path(os.environ.get('XDG_STATE_HOME',str(Path.home()/'.local/state')))/'codex-footprint'))).expanduser().resolve()
                 pointer=data/'runtime'
-                if pointer.is_symlink() and (pointer.resolve()==cache.resolve() or cache.resolve() in pointer.resolve().parents):
-                    tmp=pointer.with_name('.runtime-'+uuid.uuid4().hex);tmp.symlink_to(runtime,target_is_directory=True);os.replace(tmp,pointer)
-                    receipt['stable_runtime_updated']=True
-                    agent=Path.home()/'Library/LaunchAgents/xingyu.wang.codexfootprint.plist'
-                    if sys.platform=='darwin' and agent.exists():
-                        value=plistlib.loads(agent.read_bytes())
-                        if value.get('Label')=='xingyu.wang.codexfootprint' and Path(value.get('EnvironmentVariables',{}).get('CODEX_FOOTPRINT_DATA','/')).resolve()==data:
-                            p=subprocess.run(['/bin/launchctl','kickstart','-k','gui/'+str(os.getuid())+'/xingyu.wang.codexfootprint'],capture_output=True,text=True,timeout=15)
-                            receipt['service_restarted']=p.returncode==0
-                            if p.returncode:receipt['service_error']=p.stderr[:500]
+                versions_root=data/'runtime-versions'
+                if pointer.is_symlink() and (pointer.resolve()==cache.resolve() or cache.resolve() in pointer.resolve().parents or versions_root in pointer.resolve().parents):
+                    staged=subprocess.run([sys.executable,str(runtime/'scripts/codex_footprint.py'),'prepare-runtime'],capture_output=True,text=True,timeout=30)
+                    if staged.returncode:
+                        receipt['service_error']='Runtime pin failed: '+staged.stderr[:500]
+                    else:
+                        receipt['stable_runtime_updated']=True
+                        receipt['pinned_runtime']=json.loads(staged.stdout)['runtime']
+                        agent=Path.home()/'Library/LaunchAgents/xingyu.wang.codexfootprint.plist'
+                        if sys.platform=='darwin' and agent.exists():
+                            value=plistlib.loads(agent.read_bytes())
+                            if value.get('Label')=='xingyu.wang.codexfootprint' and Path(value.get('EnvironmentVariables',{}).get('CODEX_FOOTPRINT_DATA','/')).resolve()==data:
+                                p=subprocess.run([sys.executable,str(runtime/'scripts/codex_footprint.py'),'install-service'],capture_output=True,text=True,timeout=30)
+                                receipt['service_restarted']=p.returncode==0
+                                if p.returncode:receipt['service_error']=p.stderr[:500]
     receipt['temporary_backup_removed']=not Path(temporary).exists()
     print(json.dumps(receipt,ensure_ascii=False,indent=2))
     return 1 if 'error' in receipt or 'service_error' in receipt else 0

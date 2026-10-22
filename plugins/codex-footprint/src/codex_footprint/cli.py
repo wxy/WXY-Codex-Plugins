@@ -41,7 +41,7 @@ def main():
     sub.add_parser('dashboard')
     panel=sub.add_parser('panel')
     panel.add_argument('--port',type=int,default=8766)
-    for name in ('service-plan','install-service','remove-service','supervise'):
+    for name in ('service-plan','prepare-runtime','install-service','remove-service','supervise'):
         sub.add_parser(name)
     alerts = sub.add_parser('alerts')
     alerts.add_argument('--ack')
@@ -65,9 +65,10 @@ def main():
             print(f'codex-footprint: observation skipped ({type(exc).__name__}: {exc})',file=sys.stderr)
         return 0  # Context/warning only; no decision, permission rewrite, or exit 2.
     try:
-        if command in ('service-plan','install-service','remove-service','supervise'):
+        if command in ('service-plan','prepare-runtime','install-service','remove-service','supervise'):
             from . import supervisor,monitor
             if command=='service-plan':value=supervisor.plan(monitor.load())
+            elif command=='prepare-runtime':value=supervisor.prepare(monitor.load())
             elif command=='install-service':value=supervisor.install(monitor.load())
             elif command=='remove-service':value=supervisor.remove(monitor.load())
             else:value=supervisor.supervise()

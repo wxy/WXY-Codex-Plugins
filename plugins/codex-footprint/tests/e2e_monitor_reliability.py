@@ -261,6 +261,23 @@ def main():
         return {'scope_change_not_compared': True}
     case('changed_scope_never_invents_growth', scope)
 
+    def small_cold(tmp, root, state, cli, cfg, start, wait, row):
+        busy=[]
+        for i in range(8):
+            p=tmp/('a-large-%d'%i);p.mkdir();busy.append(p)
+            for j in range(120):(p/str(j)).write_bytes(b'x')
+        (root/'base').write_bytes(b'x'*4096)
+        cfg(roots=[{'path':str(p)} for p in busy+[root]],monitor={'event_backend':'polling'})
+        cli('tick','--rounds','100')
+        before=row()['measured_at']
+        cfg(monitor={'slice_entries':1})
+        start()
+        wait(lambda:(value.get('complete') and (value.get('measured_at') or 0)>before) if (value:=row()) else False,4)
+        value=cli('status')['worker']['progress']
+        assert value['pending_roots']>0,value
+        return {'known_small_root_refreshed_before_large_backlog':True,'pending_large_roots':value['pending_roots']}
+    case('known_small_baseline_is_not_queued_behind_large_roots',small_cold)
+
     path = Path(args.output)
     path.parent.mkdir(parents=True, exist_ok=True)
     passed = sum(c['result'] == 'pass' for c in report['cases'])
