@@ -14,7 +14,7 @@ def day_for(timestamp):
 
 def compact(row):
     return {k: row.get(k) for k in ('path', 'measured_at', 'started_at', 'allocated_bytes',
-            'file_count', 'complete', 'measurement_scope', 'storage_volume')}
+            'file_count', 'complete', 'measurement_scope', 'storage_volume', 'excluded_paths')}
 
 
 def remember(store, row, previous=None):
@@ -65,7 +65,11 @@ def generate(config, requested_day=None):
             remember(store,row,prior.get(row['path']))
             if row.get('complete'):prior[row['path']]=row
         roots = []
+        from . import cache_roots
+        cache_coverage=cache_roots.coverage(store,config,day)
+        retired_parent=cache_coverage.get('development_caches',{}).get('path')
         for path, first_raw, last_raw in store.db.execute('SELECT path,first_payload,last_payload FROM daily_roots WHERE day=?', (day,)):
+            if path==retired_parent:continue
             first, last = json.loads(first_raw), json.loads(last_raw)
             comparable = (last['measured_at'] > first['measured_at'] and
                           first.get('measurement_scope') and first['measurement_scope'] == last.get('measurement_scope'))
@@ -100,6 +104,7 @@ def generate(config, requested_day=None):
                                'cross_day_comparable_roots':sum(r['comparison_status']=='cross_day' for r in roots),
                                'stale_roots':[r['path'] for r in roots if r['stale']],
                                'partial_roots':partial,
+                               **cache_coverage,
                                'note': 'Growth covers each displayed observed interval. Missing/changed/partial endpoints stay unknown.'},
                   'root_totals_additive': False, 'full_disk_scan_triggered': False, 'history_analysis_triggered': False,
                   'attribution': 'Temporal/path associations; shared roots and session totals must not be added.'}
@@ -110,6 +115,7 @@ def generate(config, requested_day=None):
         store.db.execute('DELETE FROM daily_roots WHERE day<?', (cutoff,))
         store.db.execute('DELETE FROM daily_baselines WHERE day<?', (cutoff,))
         store.db.execute('DELETE FROM daily_reports WHERE day<?', (cutoff,))
+        store.db.execute('DELETE FROM cache_coverage WHERE day<?', (cutoff,))
         store.db.commit()
         return result
 

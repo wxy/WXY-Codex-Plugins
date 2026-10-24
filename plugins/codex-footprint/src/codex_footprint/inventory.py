@@ -46,10 +46,11 @@ def files(root, excluded, exclude_names=()):
 
 
 class Cycle:
-    def __init__(self,path,state,exclude_names=()):
-        self.path=Path(path); self.iterator=files(path,[Path(state)],exclude_names); self.hardlinks=set(); self.top=[]
+    def __init__(self,path,state,exclude_names=(),exclude_paths=()):
+        self.path=Path(path); self.iterator=files(path,[Path(state),*exclude_paths],exclude_names); self.hardlinks=set(); self.top=[]
         self.row={'path':str(path),'started_at':time.time(),'measured_at':None,'complete':False,'finished':False,
                   'allocated_bytes':0,'logical_bytes':0,'file_count':0,'entries_visited':0,'errors':[],'error_count':0,'top_files':[]}
+        if exclude_paths:self.row['excluded_paths']=list(exclude_paths)
     def step(self,count,deadline):
         for _ in range(count):
             if time.monotonic()>=deadline: break

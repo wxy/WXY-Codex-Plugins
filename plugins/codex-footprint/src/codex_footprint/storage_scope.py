@@ -148,6 +148,9 @@ def scoped_report(report, config):
         closed = isinstance(value.get('window_end_at'), (int, float)) and value['window_end_at'] >= end and time.time() >= end
     except (KeyError, ValueError, TypeError, OverflowError):
         closed = False
-    coverage['full_day'] = bool(value['roots'] and closed and not coverage['roots_without_complete_endpoints'] and not coverage.get('partial_roots')
+    caches=coverage.get('development_caches')
+    from .cache_roots import in_scope
+    if caches and not in_scope(caches,config):coverage.pop('development_caches');caches=None
+    coverage['full_day'] = bool(value['roots'] and closed and not coverage['roots_without_complete_endpoints'] and not coverage.get('partial_roots') and not (caches and (caches.get('gaps') or not caches.get('discovery_complete')))
                                 and all(r.get('complete') and r.get('window_complete') for r in value['roots']))
     return value

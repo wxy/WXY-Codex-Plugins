@@ -47,6 +47,7 @@ class GlobalStore:
                 CREATE INDEX IF NOT EXISTS volume_minutes_time ON volume_minutes(ts);
                 CREATE TABLE IF NOT EXISTS baselines(path TEXT PRIMARY KEY,ts REAL NOT NULL,payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS daily_baselines(day TEXT NOT NULL,path TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(day,path));
+                CREATE TABLE IF NOT EXISTS cache_coverage(day TEXT PRIMARY KEY,payload TEXT NOT NULL);
             ''')
             self.db.execute('CREATE TABLE IF NOT EXISTS runtime_migrations(name TEXT PRIMARY KEY)')
             recovered=self.db.execute("SELECT 1 FROM runtime_migrations WHERE name='complete-baselines-v2'").fetchone()

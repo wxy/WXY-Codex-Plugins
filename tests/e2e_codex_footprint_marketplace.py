@@ -62,7 +62,7 @@ def main():
             digests={}
             for relative in ['.codex-plugin/plugin.json','.mcp.json','hooks/hooks.json','scripts/codex_footprint.py','scripts/update_plugin.py',
                              'src/codex_footprint/observer.py','src/codex_footprint/engine.py','src/codex_footprint/service.py',
-                             'src/codex_footprint/monitor.py','src/codex_footprint/global_store.py','src/codex_footprint/inventory.py','src/codex_footprint/historical.py','src/codex_footprint/summaries.py','src/codex_footprint/panel.py','src/codex_footprint/supervisor.py','src/codex_footprint/filesystem_events.py','src/codex_footprint/codex_notices.py','src/codex_footprint/chart_history.py','src/codex_footprint/storage_scope.py','assets/dashboard.html','tests/e2e_review_followups.py','tests/e2e_monitor_reliability.py']:
+                             'src/codex_footprint/monitor.py','src/codex_footprint/global_store.py','src/codex_footprint/inventory.py','src/codex_footprint/historical.py','src/codex_footprint/summaries.py','src/codex_footprint/panel.py','src/codex_footprint/supervisor.py','src/codex_footprint/filesystem_events.py','src/codex_footprint/codex_notices.py','src/codex_footprint/chart_history.py','src/codex_footprint/storage_scope.py','src/codex_footprint/cache_roots.py','assets/dashboard.html','tests/e2e_review_followups.py','tests/e2e_monitor_reliability.py','tests/e2e_cache_coverage.py','tests/e2e_cache_dashboard.mjs']:
                 a=hashlib.sha256((PLUGIN/relative).read_bytes()).hexdigest()
                 b=hashlib.sha256((cache/relative).read_bytes()).hexdigest()
                 assert a==b, relative
@@ -96,6 +96,11 @@ def main():
             recovery=json.loads(recovery_path.read_text())
             assert recovery['failed']==0,recovery
             report['runtime_recovery']={'passed':recovery['passed'],'failed':0}
+            cache_path=output/'cache-coverage/report.json'
+            run([sys.executable,str(cache/'tests/e2e_cache_coverage.py'),'--output',str(cache_path)],timeout=90)
+            caches=json.loads(cache_path.read_text())
+            assert caches['failed']==0,caches
+            report['cache_coverage']={'passed':caches['passed'],'failed':0}
             run([sys.executable,str(REPO/'tests/e2e_footprint_safe_upgrade.py'),'--output',str(output/'safe-upgrade')],timeout=90)
             upgrade=json.loads((output/'safe-upgrade/report.json').read_text())
             assert upgrade['result']=='pass'

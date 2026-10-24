@@ -1,4 +1,4 @@
-# Implementation and acceptance boundary — 0.4.6
+# Implementation and acceptance boundary — 0.4.7
 
 [Product scope](product-scope.md) remains the target contract. [Implementation plan](implementation-plan.md) orders A → B → C → D. The two functions now have a working local implementation; automated results and real host acceptance must be reported separately.
 
@@ -7,6 +7,7 @@
 - Full WXY plugin manifest, seven guarded lifecycle definitions, nine local MCP tools and reproducible ZIP.
 - One stable global config/history, lightweight spool, elected detached worker, fair resumable metadata walks and separate capacity samples.
 - Selected internal/system and development-volume background coverage; other external disks excluded. Global known-development-root/workspace discovery; complete comparable baselines, worker health and next-hook recovery; disable retains history.
+- Independent named development-cache roots with separate complete baselines; protected cache directories remain explicit unknown coverage gaps without extra permissions.
 - Growth/rate/file-count/large-threshold/sustained/capacity signals, durable inbox, acknowledgement, cooldown and material re-alert.
 - Public macOS FSEvents dirty-root scheduling, periodic reconciliation and polling fallback; no per-file delta cache or persistent replay.
 - Top-navigation read-only panel with separate per-disk metric columns and charts; 1h/24h/7d windows, labeled time axes, numeric GB axes, honest recorded-interval deltas and blank missing coverage.
