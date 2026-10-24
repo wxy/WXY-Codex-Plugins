@@ -55,8 +55,22 @@ def capacity_paths(config):
     return paths
 
 
+def system_vm_path(path):
+    # macOS stores swap on a separate APFS volume in the system container.
+    # It belongs to the system-disk series, not a third removable-disk series.
+    if sys.platform != 'darwin':return False
+    text=str(Path(path).expanduser())
+    anchor=Path('/System/Volumes/VM')
+    if text!=str(anchor) and not text.startswith(str(anchor)+'/'):return False
+    try:
+        p=Path(text).resolve()
+        return anchor.is_dir() and (p==anchor or anchor in p.parents)
+    except (OSError,RuntimeError):return False
+
+
 def monitored_path(path, config):
     try:
+        if system_vm_path(path):return True
         device = _device(path)
         if device is None:
             return False
@@ -77,6 +91,7 @@ def series_for(path, config):
         if not p.is_absolute():
             return None
         p = p.resolve()
+        if system_vm_path(p):return str(primary_path())
         for mount in capacity_paths(config):
             if p == mount or (mount != Path('/') and mount in p.parents):
                 return str(mount)
@@ -121,6 +136,11 @@ def scoped_report(report, config):
     coverage = value.setdefault('coverage', {})
     coverage['measured_roots'] = len(value['roots'])
     coverage['roots_without_complete_endpoints'] = [p for p in coverage.get('roots_without_complete_endpoints', []) if series_for(p, config)]
+    for key in ('stale_roots','partial_roots'):
+        if key in coverage:coverage[key]=[p for p in coverage[key] if series_for(p,config)]
+    if 'same_day_comparable_roots' in coverage:
+        coverage['same_day_comparable_roots']=sum(r.get('growth_bytes') is not None for r in value['roots'])
+        coverage['cross_day_comparable_roots']=sum(r.get('comparison_status')=='cross_day' for r in value['roots'])
     coverage['storage_scope'] = 'system_and_development_volumes'
     try:
         day = dt.date.fromisoformat(value['day'])
@@ -128,6 +148,6 @@ def scoped_report(report, config):
         closed = isinstance(value.get('window_end_at'), (int, float)) and value['window_end_at'] >= end and time.time() >= end
     except (KeyError, ValueError, TypeError, OverflowError):
         closed = False
-    coverage['full_day'] = bool(value['roots'] and closed and not coverage['roots_without_complete_endpoints']
+    coverage['full_day'] = bool(value['roots'] and closed and not coverage['roots_without_complete_endpoints'] and not coverage.get('partial_roots')
                                 and all(r.get('complete') and r.get('window_complete') for r in value['roots']))
     return value

@@ -6,7 +6,7 @@ Enable once to monitor supported local Codex sessions across projects. Ask expli
 
 > 启用一次，全局观察本机 Codex 会话相关的开发存储增长；用户明确要求时，调查旧会话相关的现存占用，包括安装前的产物。抓大放小，只观察、解释和建议，不主动删除。
 
-## Version 0.4.3
+## Version 0.4.6
 
 The local runtime includes a shared observer, automatic development-root discovery, volume-capacity samples, persisted alerts, explicit historical analysis, daily summaries and a local read-only panel. Nine MCP tools expose results in Codex. Version 0.4 uses macOS FSEvents to remeasure changed roots, with low-frequency reconciliation and polling fallback; an explicitly installed macOS user service provides login/crash recovery.
 
@@ -91,6 +91,7 @@ python3 tests/e2e_monitor_dashboard.py --output artifacts/dashboard
 python3 tests/e2e_event_monitor.py --output artifacts/events  # macOS native stream acceptance
 python3 tests/e2e_internal_chart.py --output artifacts/capacity
 python3 tests/e2e_review_scope.py --output artifacts/review
+python3 tests/e2e_monitor_reliability.py --output artifacts/reliability/report.json
 python3 scripts/codex_footprint.py package --profile local --output dist
 ```
 
@@ -104,4 +105,8 @@ Version 0.4.3 aligns CLI/MCP reports with the selected-disk scope, recalculates 
 
 For an existing installation, run `python3 scripts/update_plugin.py` from the updated plugin source. It updates only Codex Footprint, restores older cached hook entrypoints before returning and updates the existing stable service pointer. Keep running chats open; start a fresh chat to load new MCP code. Direct upgrades through other installers can remove old cache paths; guarded hooks remain nonblocking, but old chats may miss observations until compatibility paths are restored.
 
-Version 0.4.3 keeps a 2-second tick and a 20-millisecond traversal slice, and reduces root-scheduling overhead. These are traversal budgets, not a whole-process CPU ceiling. The plugin uses filesystem metadata, local SQLite and capacity calls; it does not invoke macOS Storage Management services. System-service overhead still requires separate observation.
+Version 0.4.4 preserves complete baselines independently of rolling history, schedules pending walks every 0.2 seconds with a shared 20-millisecond slice, and keeps a 2-second idle pause. It fixes local FSEvents coalescing that unnecessarily dirtied every root, reserves admission for active projects and rotates active walkers, and labels stale records and cross-day comparisons explicitly. See [reliability verification](docs/verification-0.4.4.md). These are traversal budgets, not a whole-process CPU ceiling. The plugin uses filesystem metadata, local SQLite and capacity calls; it does not invoke macOS Storage Management services. System-service overhead still requires separate observation.
+
+Version 0.4.5 pins executable code under the stable state directory instead of the evictable plugin cache. A supervisor replacing an older worker verifies both its command and state-lock file before signalling it. Upgrade reconciles newer retained complete endpoints even when an older baseline table already exists. Known small cold roots receive earlier admission, and an explicitly configured macOS VM metadata root belongs to the internal-disk series. See [deployment recovery verification](docs/verification-0.4.5.md).
+
+Version 0.4.6 addresses the review follow-ups: cooled walkers yield capacity to new active projects, complete-endpoint age stays separate from a failed attempt, historical partial evidence follows its own report day, native/root fixtures report explicit skips, and ZIPs retain the browser driver. See [review acceptance](docs/verification-0.4.6.md).

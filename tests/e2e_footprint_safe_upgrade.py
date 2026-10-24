@@ -61,7 +61,9 @@ def main():
                 assert run([sys.executable,str(entry),'--version']).strip()==version
                 hook=subprocess.run([sys.executable,str(entry),'hook'],env=env,input=json.dumps({'hook_event_name':'SessionStart','session_id':'old-chat','cwd':str(tmp)}),capture_output=True,text=True)
                 assert hook.returncode==0 and not hook.stdout
-            assert (state/'runtime').resolve()==Path(receipt['installed']['installedPath']).resolve()
+            assert (state/'runtime').resolve()==Path(receipt['pinned_runtime']).resolve()
+            assert (state/'runtime').resolve().parent==(state/'runtime-versions').resolve()
+            assert run([sys.executable,str(state/'runtime/scripts/codex_footprint.py'),'--version']).strip()==version
             assert sentinel.read_text()=='preserve' and (profile/'config.toml').read_bytes()==before_config
             assert not (state/'config.json').exists() and not (state/'global.sqlite3').exists()
             return {'real_cli_version_upgrade':True,'old_chat_entries_forward':True,'stable_runtime_updated':True,'unrelated_plugin_and_config_preserved':True,'observation_stays_inactive':True}
