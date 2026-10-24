@@ -84,8 +84,8 @@ def normalize(raw,data,path):
         if p==Path(p.anchor) or p==Path.home():raise ValueError('Choose a development directory rather than disk/home')
         if p==data or data in p.parents or not monitored_path(p,config):continue
         parts=p.parts
-        if any(parts[:len(rparts)]==rparts for _,rparts in roots):continue
-        roots=[(r,rparts) for r,rparts in roots if rparts[:len(parts)]!=parts]; roots.append((p,parts))
+        if any(parts==rparts or (parts[:len(rparts)]==rparts and not cache_roots.separate(parts,rparts)) for _,rparts in roots):continue
+        roots=[(r,rparts) for r,rparts in roots if rparts[:len(parts)]!=parts or cache_roots.separate(rparts,parts)]; roots.append((p,parts))
     if len(roots)>256:raise ValueError('Root discovery limit exceeded')
     config['roots']=[{'id':hashlib.sha256(str(p).encode()).hexdigest()[:16],'path':p} for p,_ in roots]
     config['scope']=hashlib.sha256(json.dumps(sorted(str(p) for p,_ in roots)).encode()).hexdigest()
@@ -337,7 +337,7 @@ class Runner:
                     self.cache_record=cache_roots.discover(exclusions);self.cache_checked_at=time.time()
                     cache_roots.remember(store,self.cache_record)
                 cache_record=self.cache_record
-                paths=cache_roots.partition(paths,cache_record)
+                paths=cache_roots.partition(paths,cache_record,[str(r['path']) for r in config['roots']])
                 parts.update({p:Path(p).parts for p in paths})
             paths=[p for p in dict.fromkeys(paths) if monitored_path(p,config) and not set(parts[p]).intersection(config['exclude_names'])]
             # Compare pre-parsed path components, avoiding quadratic Path/parents construction every tick.

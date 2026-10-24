@@ -56,10 +56,17 @@ def needed(paths):
     root=parent()
     return any(Path(p)==root or Path(p) in root.parents for p in paths)
 
-def partition(paths,record):
+def partition(paths,record,configured=()):
     """Carve the cache subtree out of broader roots, preserving child roots."""
     root=parent();paths=[p for p in paths if Path(p)!=root]
-    return list(dict.fromkeys(paths+record['roots']))
+    explicit=[p for p in configured if root in Path(p).parents]
+    return list(dict.fromkeys(paths+explicit+record['roots']))
+
+def separate(child_parts,ancestor_parts):
+    """A partitioned cache ancestor cannot cover an explicit cache child."""
+    cache_parts=parent().parts
+    return (child_parts[:len(cache_parts)]==cache_parts and
+            len(ancestor_parts)<=len(cache_parts) and ancestor_parts==cache_parts[:len(ancestor_parts)])
 
 def exclusions(path,record):
     root=parent()
@@ -67,13 +74,12 @@ def exclusions(path,record):
 
 def coalesce(paths,parts,record):
     all_parts={parts[p] for p in paths}
-    cache_parts=parent().parts
     def covered(p):
         for n in range(1,len(parts[p])):
             ancestor=parts[p][:n]
             if ancestor not in all_parts:continue
             # Broader roots omit Caches, so they cannot subsume its children.
-            if record and parts[p][:len(cache_parts)]==cache_parts and ancestor==cache_parts[:n] and n<len(cache_parts):continue
+            if record and separate(parts[p],ancestor):continue
             return True
         return False
     return [p for p in paths if not covered(p)]

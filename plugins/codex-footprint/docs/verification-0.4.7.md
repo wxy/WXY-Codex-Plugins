@@ -33,3 +33,7 @@ Use the desired Python interpreter's absolute path if `python3` is not native. T
 ## Acceptance boundary
 
 This PR is a 0.4.7 candidate. The personal installation/service remains 0.4.6 until a separately authorized upgrade. Readable child baselines must actually finish after deployment; first measurements cannot establish earlier growth. Nested denied descendants can still make their own development-cache root partial. Protected directories remain uncovered, and daily partial evidence can remain for an earlier failure even after a later recovery. No claim of whole-cache readability, full-day coverage, visible native notifications or exclusive Codex ownership is made.
+
+## Pre-merge review follow-up
+
+The review identified that a broad `Library` lifecycle event could replace a manually configured cache outside the automatic name list. Partitioning now restores validated explicit cache descendants, and normalization preserves them when a broad parent is also configured. A test-first CLI regression failed before the correction and passed afterward, including five root combinations: child only, Library/child in either order, and Caches/child in either order. It verifies retained complete measurement, comparable growth, unchanged child measurement scope and ancestor subtree exclusion. The cache suite now has 12 cases. Final installed-copy regression after this correction: **111 passed, 0 failed, 0 skipped** (99 existing and 12 cache cases); source/installed runtime and test hashes matched, and the temporary profile was removed.

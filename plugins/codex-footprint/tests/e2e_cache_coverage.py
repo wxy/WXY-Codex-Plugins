@@ -74,6 +74,23 @@ def main():
         assert rows[str(library)]['excluded_paths']==[str(cache)]
         return {'ancestor_excludes_cache_subtree':True,'broad_hook_does_not_collapse_children':True}
     case('explicit_ancestor_and_parent_hook_do_not_double_count',ancestor)
+    def explicit_cache(tmp,cache,state,cli,cfg):
+        custom=cache/'OtherApp';custom.mkdir();(cache/'pip').mkdir()
+        library=cache.parent;(library/'outside.bin').write_bytes(b'x'*4096)
+        combinations=([custom],[library,custom],[custom,library],[cache,custom],[custom,cache])
+        for i,paths in enumerate(combinations):
+            cfg(roots=[{'path':str(p)} for p in paths])
+            cli('tick','--rounds','40')
+            before=next(r for r in cli('status')['roots'] if r['path']==str(custom))
+            (custom/('growth-%s'%i)).write_bytes(b'z'*65536)
+            cli('hook',input=json.dumps({'hook_event_name':'UserPromptSubmit','cwd':str(library),'session_id':'explicit-cache-fixture'}))
+            s=cli('tick','--rounds','40');rows={r['path']:r for r in s['roots']}
+            assert str(custom) in rows and rows[str(custom)]['complete'],rows
+            assert rows[str(custom)]['growth_bytes']>=65536,rows[str(custom)]
+            assert rows[str(custom)]['measurement_scope']==before['measurement_scope']
+            assert rows[str(library)]['file_count']==1 and rows[str(library)]['excluded_paths']==[str(cache)]
+        return {'configured_root_combinations':len(combinations),'custom_cache_remains_comparable':True,'no_ancestor_double_count':True}
+    case('explicit_nondefault_cache_survives_broad_hooks_and_config_order',explicit_cache)
     def nested(tmp,cache,state,cli,cfg):
         (cache/'pip/denied').mkdir(parents=True);(cache/'python3').mkdir();(cache/'pip/denied').chmod(0)
         s=cli('tick','--rounds','40');rows={r['path']:r for r in s['roots']}
