@@ -15,6 +15,7 @@ from . import __version__
 from .config import data_directory, OBSERVER, THRESHOLDS, RETENTION, number
 from .global_store import GlobalStore
 from .inventory import Cycle
+from . import cache_roots
 from .storage_scope import monitored_path, primary_path, capacity_paths, current_volumes, series_for
 
 MONITOR={'interval_seconds':2,'scan_interval_seconds':0.2,'refresh_seconds':60,'slice_entries':5000,'slice_seconds':0.02,'autostart':True,'event_backend':'auto','reconcile_seconds':1800,'development_volume':None}
@@ -207,7 +208,7 @@ def status(config):
                 'roots':roots,'volumes':current_volumes(store.payloads('volumes'),config),
                 'pending_events':len(list((data/'spool').glob('*.json'))) if (data/'spool').exists() else 0,
                 'notification_backend':config.get('notifications',NOTIFICATIONS)['backend'],'notification_visibility':'unverified; OS settings may suppress desktop notifications',
-                'coverage':{'stale_roots':stale,'partial_roots':partial,'hosts':'supported local Codex lifecycle events','process_ownership':False,'storage_scope':'system_and_development_volumes','filesystem':'system and selected development volume only; other removable volumes are excluded; unreadable paths are gaps','restart_recovery':'installed macOS login service restarts failures; otherwise next trusted hook/explicit enable'},
+                'coverage':dict(cache_roots.coverage(store,config),stale_roots=stale,partial_roots=partial,hosts='supported local Codex lifecycle events',process_ownership=False,storage_scope='system_and_development_volumes',filesystem='system and selected development volume only; other removable volumes are excluded; unreadable paths are gaps',restart_recovery='installed macOS login service restarts failures; otherwise next trusted hook/explicit enable'),
                 'deletion_supported':False,'process_attribution_supported':False,'ui_supported':True,'panel':info(config),
                 'legacy_history_preserved':(data/'footprint.sqlite3').exists()}
 
@@ -284,6 +285,7 @@ class Runner:
         limit=resource.getrlimit(resource.RLIMIT_NOFILE)[0]
         self.max_active=max(1,min(8,(int(limit)-64)//132)) if limit>0 else 2
         self.discovery_paths=[];self.discovery_at=0;self.hot_until={};self.preemptions=0
+        self.cache_record=None;self.cache_checked_at=0
         with GlobalStore(config['data_dir']) as previous:
             self.size_hints={r['path']:(r.get('file_count',0) if r.get('complete') else max(512,r.get('file_count',0))) for r in previous.payloads('inventory')}
         from .filesystem_events import Watcher
@@ -298,6 +300,7 @@ class Runner:
         exclusions=tuple(sorted(config['exclude_names']))
         request=data/'refresh.request'
         if exclusions!=self.exclusions or request.exists():
+            if exclusions!=self.exclusions:self.cache_record=None
             for cycle in self.cycles.values():cycle.close()
             self.cycles.clear();self.completed.clear();self.exclusions=exclusions
             request.unlink(missing_ok=True)
@@ -328,10 +331,17 @@ class Runner:
                 current=p.parts
                 if any(current[:len(parts[r])]==parts[r] for r in paths):continue
                 paths=[r for r in paths if parts[r][:len(current)]!=current];paths.append(cwd);parts[cwd]=current
+            cache_record=None
+            if (config['discovery'] or cache_roots.needed(paths)) and monitored_path(cache_roots.parent(),config) and not set(cache_roots.parent().parts).intersection(exclusions):
+                if self.cache_record is None or time.time()-self.cache_checked_at>=60:
+                    self.cache_record=cache_roots.discover(exclusions);self.cache_checked_at=time.time()
+                    cache_roots.remember(store,self.cache_record)
+                cache_record=self.cache_record
+                paths=cache_roots.partition(paths,cache_record)
+                parts.update({p:Path(p).parts for p in paths})
             paths=[p for p in dict.fromkeys(paths) if monitored_path(p,config) and not set(parts[p]).intersection(config['exclude_names'])]
             # Compare pre-parsed path components, avoiding quadratic Path/parents construction every tick.
-            all_parts={parts[p] for p in paths}
-            paths=[p for p in paths if not any(parts[p][:n] in all_parts for n in range(1,len(parts[p]))) ]
+            paths=cache_roots.coalesce(paths,parts,cache_record)
             # Listen before baselines, and retain changes received during a scan for a follow-up.
             self.dirty.update(self.watcher.update(paths,config,self.one_shot));self.dirty.update(self.watcher.drain())
             self.dirty.intersection_update(paths);event_status=self.watcher.status()
@@ -342,9 +352,16 @@ class Runner:
             self.max_active=max(1,min(8,(int(limit)-64)//132)) if limit>0 else 2
             for (old_path,) in store.db.execute('SELECT path FROM inventory').fetchall():
                 if old_path not in paths:store.db.execute('DELETE FROM inventory WHERE path=?',(old_path,))
+            # A newly partitioned ancestor needs a new scoped measurement; its old
+            # inclusive baseline remains historical, never a comparable endpoint.
+            for ancestor in set(paths).intersection(str(p) for p in cache_roots.parent().parents):
+                old=store.db.execute('SELECT payload FROM inventory WHERE path=?',(ancestor,)).fetchone()
+                if old and json.loads(old[0]).get('excluded_paths',[])!=cache_roots.exclusions(ancestor,cache_record):
+                    store.db.execute('DELETE FROM inventory WHERE path=?',(ancestor,));self.completed.pop(ancestor,None)
             # Excluded names are applied by path boundaries discovered during the walk, not shell patterns.
             for key in list(self.cycles):
-                if key not in paths:self.cycles.pop(key).close()
+                if key not in paths or self.cycles[key].row.get('excluded_paths',[])!=cache_roots.exclusions(key,cache_record):
+                    self.cycles.pop(key).close();self.completed.pop(key,None)
             deadline=time.monotonic()+config['monitor']['slice_seconds']
             remaining=config['monitor']['slice_entries']
             self.hot_until={p:t for p,t in self.hot_until.items() if t>time.time()}
@@ -378,9 +395,12 @@ class Runner:
                             victim=min(cold,key=lambda p:self.cycles[p].row['entries_visited'])
                             self.cycles.pop(victim).close();self.dirty.add(victim);self.preemptions+=1
                     if path not in self.cycles and len(self.cycles)<capacity and due:
-                        self.cycles[path]=Cycle(path,data,config['exclude_names'])
+                        omitted=cache_roots.exclusions(path,cache_record)
+                        self.cycles[path]=Cycle(path,data,config['exclude_names'],omitted)
                         self.cycles[path].row['storage_volume']=series_for(path,config)
-                        self.cycles[path].row['measurement_scope']=hashlib.sha256(json.dumps({'path':path,'state':str(data),'exclude_names':exclusions,'volume':self.cycles[path].row['storage_volume'],'accounting':2},sort_keys=True).encode()).hexdigest()
+                        scope={'path':path,'state':str(data),'exclude_names':exclusions,'volume':self.cycles[path].row['storage_volume'],'accounting':2}
+                        if omitted:scope['excluded_paths']=omitted
+                        self.cycles[path].row['measurement_scope']=hashlib.sha256(json.dumps(scope,sort_keys=True).encode()).hexdigest()
                         self.dirty.discard(path)
                 active=list(self.cycles)
                 if active:
@@ -510,6 +530,7 @@ def operate(name,args=None):
             return {'schema_version':2,'alerts':store.alerts(config)}
     with GlobalStore(data) as store:
         roots=[r for r in store.payloads('inventory') if series_for(r['path'],config)];history=store.payloads('history_runs');volumes=current_volumes(store.payloads('volumes'),config)
+        coverage=cache_roots.coverage(store,config)
     associations={}
     with GlobalStore(data) as store:
         if store.db:
@@ -523,7 +544,7 @@ def operate(name,args=None):
         return {'schema_version':2,'execution_supported':False,'reclaim_bytes':None,'plans':[{'path':r['path'],'allocated_bytes':r['allocated_bytes'],'complete':r['complete'],'steps':['Verify the owning project/tool and active users.','Review exact artifacts using the owner tool.','Request separate explicit authorization for any cleanup.']} for r in roots[:args.get('limit',20)]]}
     if args.get('path'):roots=[r for r in roots if r['path']==args['path'] or str(Path(args['path'])) in [f['path'] for f in r.get('top_files',[])]]
     return {'schema_version':2,'roots':sorted(roots,key=lambda r:r['allocated_bytes'],reverse=True)[:args.get('limit',20)],
-            'volumes':volumes,'latest_historical_analysis':history[0] if history else None,
+            'volumes':volumes,'coverage':coverage,'latest_historical_analysis':history[0] if history else None,
             'root_totals_additive':False,'attribution':'temporal/path association, not exclusive process ownership',
             'execution_supported':False,'reclaim_bytes':None,
             'session_filter':args.get('session_id'),'session_filter_supported':True,'session_growth_bytes':None,

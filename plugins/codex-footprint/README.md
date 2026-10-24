@@ -6,11 +6,15 @@ Enable once to monitor supported local Codex sessions across projects. Ask expli
 
 > 启用一次，全局观察本机 Codex 会话相关的开发存储增长；用户明确要求时，调查旧会话相关的现存占用，包括安装前的产物。抓大放小，只观察、解释和建议，不主动删除。
 
-## Version 0.4.6
+## Version 0.4.7
 
 The local runtime includes a shared observer, automatic development-root discovery, volume-capacity samples, persisted alerts, explicit historical analysis, daily summaries and a local read-only panel. Nine MCP tools expose results in Codex. Version 0.4 uses macOS FSEvents to remeasure changed roots, with low-frequency reconciliation and polling fallback; an explicitly installed macOS user service provides login/crash recovery.
 
 > 文件变化触发后台测量，静止目录不反复遍历；全盘与历史分析只手动触发。内置盘与选定开发盘各有一列指标和一张图，窄窗口上下排列。图表可切换 1 小时 / 24 小时 / 7 天，带时间标签、GB 纵轴和已记录区间变化量；没有记录的时段留空。
+
+Version 0.4.7 monitors named development caches under `~/Library/Caches` as independent roots. Each readable child can complete its own baseline while protected siblings remain explicit coverage gaps. Status, explanations, daily reports and the panel read retained discovery metadata; they do not request additional permissions. See [cache coverage acceptance](docs/verification-0.4.7.md).
+
+> 开发缓存分别建立基线。受保护目录继续列为覆盖缺口，占用与增长未知；其他可读应用缓存不属于自动开发缓存范围，不会宣称整个 Caches 已完整覆盖。
 
 Automated E2E verifies filesystem behavior and installed-copy operation. Actual host hook delivery, visible notifications and large-machine overhead require separate personal acceptance; native notification command success alone does not prove visibility. See [acceptance boundary](docs/v1-scope.md).
 
