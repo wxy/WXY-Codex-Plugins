@@ -42,6 +42,7 @@ class GlobalStore:
             self.db.executescript('''
                 CREATE TABLE IF NOT EXISTS daily_roots(day TEXT NOT NULL,path TEXT NOT NULL,first_payload TEXT NOT NULL,last_payload TEXT NOT NULL,PRIMARY KEY(day,path));
                 CREATE TABLE IF NOT EXISTS daily_reports(day TEXT PRIMARY KEY,payload TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS daily_gaps(day TEXT NOT NULL,path TEXT NOT NULL,ts REAL NOT NULL,PRIMARY KEY(day,path));
                 CREATE TABLE IF NOT EXISTS volume_minutes(device INTEGER NOT NULL,bucket INTEGER NOT NULL,ts REAL NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(device,bucket));
                 CREATE INDEX IF NOT EXISTS volume_minutes_time ON volume_minutes(ts);
                 CREATE TABLE IF NOT EXISTS baselines(path TEXT PRIMARY KEY,ts REAL NOT NULL,payload TEXT NOT NULL);

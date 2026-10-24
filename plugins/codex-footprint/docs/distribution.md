@@ -1,6 +1,6 @@
 # WXY Codex Plugins distribution
 
-Canonical source: `WXY-Codex-Plugins/plugins/codex-footprint/`. Version **0.4.5** packages the full local global-monitor and explicit-history runtime. Official-marketplace publication is outside scope.
+Canonical source: `WXY-Codex-Plugins/plugins/codex-footprint/`. Version **0.4.6** packages the full local global-monitor and explicit-history runtime. Official-marketplace publication is outside scope.
 
 ```sh
 codex plugin marketplace add wxy/WXY-Codex-Plugins

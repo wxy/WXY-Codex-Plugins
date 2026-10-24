@@ -18,9 +18,13 @@ def compact(row):
 
 
 def remember(store, row, previous=None):
-    if not row.get('complete') or not row.get('measured_at'):
+    if not row.get('measured_at'):
         return
     day = day_for(row['measured_at'])
+    if not row.get('complete'):
+        if row.get('finished'):
+            store.db.execute('INSERT INTO daily_gaps VALUES(?,?,?) ON CONFLICT(day,path) DO UPDATE SET ts=max(ts,excluded.ts)',(day,row['path'],row['measured_at']))
+        return
     if (previous and previous.get('complete') and previous.get('measured_at') and
             day_for(previous['measured_at']) < day and previous.get('measurement_scope') == row.get('measurement_scope')):
         existing=store.db.execute('SELECT payload FROM daily_baselines WHERE day=? AND path=?',(day,row['path'])).fetchone()
@@ -84,6 +88,7 @@ def generate(config, requested_day=None):
         for row in roots:
             if day==day_for(now):annotate_coverage(row,config)
             else:row.update(stale=False,coverage_status='complete')
+        partial=[path for (path,) in store.db.execute('SELECT path FROM daily_gaps WHERE day=? ORDER BY path',(day,))]
         alerts = [a for a in store.alerts(config) if start <= a.get('latest_at', a.get('sampled_at', 0)) < end]
         result = {'schema_version': 3, 'report_id': 'daily-'+day, 'day': day, 'generated_at': now,
                   'window_start_at': start, 'window_end_at': min(end, now), 'timezone': time.tzname[-1],
@@ -94,13 +99,14 @@ def generate(config, requested_day=None):
                                'same_day_comparable_roots':sum(r['growth_bytes'] is not None for r in roots),
                                'cross_day_comparable_roots':sum(r['comparison_status']=='cross_day' for r in roots),
                                'stale_roots':[r['path'] for r in roots if r['stale']],
-                               'partial_roots':[r['path'] for r in known.values() if r.get('finished') and not r.get('complete')],
+                               'partial_roots':partial,
                                'note': 'Growth covers each displayed observed interval. Missing/changed/partial endpoints stay unknown.'},
                   'root_totals_additive': False, 'full_disk_scan_triggered': False, 'history_analysis_triggered': False,
                   'attribution': 'Temporal/path associations; shared roots and session totals must not be added.'}
         result = scoped_report(result,config)
         store.db.execute('INSERT OR REPLACE INTO daily_reports VALUES(?,?)', (day, json.dumps(result)))
         cutoff = (dt.datetime.now().date()-dt.timedelta(days=90)).isoformat()
+        store.db.execute('DELETE FROM daily_gaps WHERE day<?', (cutoff,))
         store.db.execute('DELETE FROM daily_roots WHERE day<?', (cutoff,))
         store.db.execute('DELETE FROM daily_baselines WHERE day<?', (cutoff,))
         store.db.execute('DELETE FROM daily_reports WHERE day<?', (cutoff,))

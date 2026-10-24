@@ -62,7 +62,7 @@ def main():
             digests={}
             for relative in ['.codex-plugin/plugin.json','.mcp.json','hooks/hooks.json','scripts/codex_footprint.py','scripts/update_plugin.py',
                              'src/codex_footprint/observer.py','src/codex_footprint/engine.py','src/codex_footprint/service.py',
-                             'src/codex_footprint/monitor.py','src/codex_footprint/global_store.py','src/codex_footprint/inventory.py','src/codex_footprint/historical.py','src/codex_footprint/summaries.py','src/codex_footprint/panel.py','src/codex_footprint/supervisor.py','src/codex_footprint/filesystem_events.py','src/codex_footprint/codex_notices.py','src/codex_footprint/chart_history.py','src/codex_footprint/storage_scope.py','assets/dashboard.html']:
+                             'src/codex_footprint/monitor.py','src/codex_footprint/global_store.py','src/codex_footprint/inventory.py','src/codex_footprint/historical.py','src/codex_footprint/summaries.py','src/codex_footprint/panel.py','src/codex_footprint/supervisor.py','src/codex_footprint/filesystem_events.py','src/codex_footprint/codex_notices.py','src/codex_footprint/chart_history.py','src/codex_footprint/storage_scope.py','assets/dashboard.html','tests/e2e_review_followups.py','tests/e2e_monitor_reliability.py']:
                 a=hashlib.sha256((PLUGIN/relative).read_bytes()).hexdigest()
                 b=hashlib.sha256((cache/relative).read_bytes()).hexdigest()
                 assert a==b, relative
@@ -85,7 +85,12 @@ def main():
             run([sys.executable,str(cache/'tests/e2e_monitor_reliability.py'),'--output',str(reliability_path)],timeout=90)
             reliability=json.loads(reliability_path.read_text())
             assert reliability['failed']==0,reliability
-            report['monitor_reliability']={'passed':reliability['passed'],'failed':0}
+            report['monitor_reliability']={'passed':reliability['passed'],'failed':0,'skipped':reliability.get('skipped',0)}
+            followups_path=output/'review-followups/report.json'
+            run([sys.executable,str(cache/'tests/e2e_review_followups.py'),'--output',str(followups_path)],timeout=150)
+            followups=json.loads(followups_path.read_text())
+            assert followups['failed']==0,followups
+            report['review_followups']={'passed':followups['passed'],'failed':0}
             recovery_path=output/'runtime-recovery/report.json'
             run([sys.executable,str(cache/'tests/e2e_runtime_recovery.py'),'--output',str(recovery_path)],timeout=90)
             recovery=json.loads(recovery_path.read_text())

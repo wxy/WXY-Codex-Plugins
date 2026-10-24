@@ -213,8 +213,9 @@ def status(config):
 
 
 def annotate_coverage(row,config,baseline=None):
-    last=row.get('measured_at') or (baseline or {}).get('measured_at')
-    row['last_complete_at']=(baseline or {}).get('measured_at')
+    last=row.get('measured_at') if row.get('complete') else (baseline or {}).get('measured_at')
+    row['last_complete_at']=last
+    row['latest_attempt_at']=row.get('measured_at') or row.get('started_at')
     row['measurement_age_seconds']=max(0,time.time()-last) if last else None
     limit=max(300,2*config.get('monitor',MONITOR).get('reconcile_seconds',1800),2*config.get('monitor',MONITOR).get('refresh_seconds',60))
     row['stale']=bool(last and time.time()-last>limit)
@@ -282,7 +283,7 @@ class Runner:
         self.exclusions=tuple(sorted(config['exclude_names']))
         limit=resource.getrlimit(resource.RLIMIT_NOFILE)[0]
         self.max_active=max(1,min(8,(int(limit)-64)//132)) if limit>0 else 2
-        self.discovery_paths=[];self.discovery_at=0;self.hot_until={}
+        self.discovery_paths=[];self.discovery_at=0;self.hot_until={};self.preemptions=0
         with GlobalStore(config['data_dir']) as previous:
             self.size_hints={r['path']:(r.get('file_count',0) if r.get('complete') else max(512,r.get('file_count',0))) for r in previous.payloads('inventory')}
         from .filesystem_events import Watcher
@@ -367,9 +368,15 @@ class Runner:
                         elapsed=time.time()-self.completed.get(path,0)
                         due=path not in self.completed or elapsed>=config['monitor']['reconcile_seconds'] or (path in self.dirty and elapsed>=min(config['monitor']['refresh_seconds'],2))
                     else:due=time.time()-self.completed.get(path,0)>=pause
-                    # Reserve admission for a later lifecycle-active project. Cold
-                    # cursors retain the other slots and are never discarded.
+                    # Reclaim a cold cursor when a former urgent walker has cooled
+                    # while occupying the reserved slot. Close before opening another
+                    # cursor; restart that incomplete walk later, preserving its baseline.
                     capacity=self.max_active if self.one_shot or path in urgent else max(1,self.max_active-1)
+                    if not self.one_shot and path in urgent and path not in self.cycles and due and len(self.cycles)>=self.max_active:
+                        cold=[p for p in self.cycles if p not in urgent]
+                        if cold:
+                            victim=min(cold,key=lambda p:self.cycles[p].row['entries_visited'])
+                            self.cycles.pop(victim).close();self.dirty.add(victim);self.preemptions+=1
                     if path not in self.cycles and len(self.cycles)<capacity and due:
                         self.cycles[path]=Cycle(path,data,config['exclude_names'])
                         self.cycles[path].row['storage_volume']=series_for(path,config)
@@ -422,7 +429,7 @@ class Runner:
             if finished_this_step or time.monotonic()-self.last_prune>=60:
                 store.prune(config['retention']['max_snapshots'],config['retention']['max_events']);self.last_prune=time.monotonic()
             else:store.db.commit()
-        return {'enabled':True,'roots':len(paths),'active_cycles':len(self.cycles),'completed_roots':len(self.completed),'pending_roots':sum(p not in self.completed for p in paths),'filesystem_events':event_status,'dirty_roots':len(self.dirty),'storage_scope':'system_and_development_volumes'}
+        return {'enabled':True,'roots':len(paths),'active_cycles':len(self.cycles),'preempted_incomplete_walks':self.preemptions,'completed_roots':len(self.completed),'pending_roots':sum(p not in self.completed for p in paths),'filesystem_events':event_status,'dirty_roots':len(self.dirty),'storage_scope':'system_and_development_volumes'}
 
 
 def worker(max_ticks=None):

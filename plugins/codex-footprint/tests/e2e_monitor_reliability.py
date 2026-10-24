@@ -19,6 +19,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', required=True)
     parser.add_argument('--case')
+    parser.add_argument('--event-backend',choices=('auto','polling'),default='auto')
     args = parser.parse_args()
     report = {'command': [sys.executable, str(Path(__file__).resolve()), '--output', args.output],
               'environment': {'python': sys.version, 'platform': sys.platform},
@@ -28,9 +29,13 @@ def main():
     if args.case:
         report['command'] += ['--case', args.case]
 
-    def case(name, fn):
+    report['command'] += ['--event-backend',args.event_backend]
+
+    def case(name, fn, skip_reason=None):
         if args.case and args.case != name:
             return
+        if skip_reason:
+            report['cases'].append({'name':name,'result':'skip','reason':skip_reason});return
         started = time.monotonic()
         with tempfile.TemporaryDirectory(prefix='footprint-reliability-e2e-') as directory:
             tmp = Path(directory).resolve()
@@ -106,10 +111,11 @@ def main():
             roots.append(p)
         for i in range(5000):
             (root/('base-%05d' % i)).write_bytes(b'x')
-        cfg(roots=[{'path': str(p)} for p in roots], thresholds={'growth_bytes': 65536})
+        polling=sys.platform!='darwin' or args.event_backend=='polling'
+        cfg(roots=[{'path': str(p)} for p in roots], thresholds={'growth_bytes': 65536},monitor={'event_backend':args.event_backend,'refresh_seconds':2 if polling else 60})
         began = time.monotonic()
         start()
-        status = wait(lambda: (s if len([r for r in s['roots'] if r.get('complete')]) == 61 else None)
+        status = wait(lambda: (s if len([r for r in s['roots'] if r.get('last_complete_at')]) == 61 else None)
                       if (s := cli('status')) else None, 20)
         elapsed = time.monotonic()-began
         assert status['worker']['running']
@@ -119,7 +125,7 @@ def main():
         assert cli('status')['history_analysis_count'] == 0
         return {'roots': 61, 'files_in_hot_root': 5000, 'baseline_seconds': elapsed,
                 'production_slice_seconds': .02, 'production_interval_seconds': 2,
-                'external_writer_growth_alert': True}
+                'external_writer_growth_alert': True,'backend':status['worker']['progress']['filesystem_events']['backend'],'refresh_seconds':2 if polling else 60}
     case('production_budget_61_roots_and_external_growth', production)
 
     def late_hot(tmp, root, state, cli, cfg, start, wait, row):
@@ -166,7 +172,7 @@ def main():
         assert cli('status')['worker']['progress']['filesystem_events']['backend']=='fsevents'
         assert count()==before,'local native event invalidated an unrelated root'
         return {'native_stream':True,'coalesced_local_writes':160,'quiet_root_not_rescanned':True}
-    case('native_local_burst_preserves_unrelated_root', native_local)
+    case('native_local_burst_preserves_unrelated_root', native_local,skip_reason='FSEvents requires macOS and the native backend' if sys.platform!='darwin' or args.event_backend=='polling' else None)
 
     def baseline(tmp, root, state, cli, cfg, start, wait, row):
         (root/'base').write_bytes(b'x'*4096)
@@ -247,7 +253,7 @@ def main():
         assert value['coverage_status'] == 'partial', value
         assert value['error_count'] > 0
         return {'protected_subtree_remains_gap': True, 'no_invented_growth': True}
-    case('permission_gap_remains_explicit', permission)
+    case('permission_gap_remains_explicit', permission,skip_reason='chmod cannot deny traversal to effective UID 0; verify denial as an unprivileged user' if os.geteuid()==0 else None)
 
     def scope(tmp, root, state, cli, cfg, start, wait, row):
         (root/'old').write_bytes(b'x'*4096)
@@ -281,10 +287,12 @@ def main():
     path = Path(args.output)
     path.parent.mkdir(parents=True, exist_ok=True)
     passed = sum(c['result'] == 'pass' for c in report['cases'])
-    report.update(passed=passed,failed=len(report['cases'])-passed)
+    skipped=sum(c['result']=='skip' for c in report['cases'])
+    failed=sum(c['result']=='fail' for c in report['cases'])
+    report.update(passed=passed,failed=failed,skipped=skipped)
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2))
-    print(json.dumps({'passed': passed, 'failed': len(report['cases'])-passed, 'report': str(path)}))
-    return int(passed != len(report['cases']))
+    print(json.dumps({'passed': passed, 'failed': failed, 'skipped':skipped, 'report': str(path)}))
+    return int(failed!=0)
 
 
 if __name__ == '__main__':
