@@ -2,19 +2,19 @@
 
 A small local Codex plugin that keeps the task summary aligned with the most recent attached pull requests and adds compact, factual workflow signals.
 
-The resulting title is:
+The resulting title uses at most one time-severity badge and one pull-request-severity badge:
 
 ```text
-⏱️⌛🔀🔀 Dashboard caching · live refresh
+⏰🌿 Dashboard caching · live refresh
 ```
 
-After three attached PRs or roughly three hours of Codex work time, a fork marker appears:
+Larger totals stay compact:
 
 ```text
-⏱️⏱️⏱️🔀🔀🔀🌿 Widget polish · release readiness
+🕰️🌳 Widget polish · release readiness
 ```
 
-Each `⏱️` is one completed hour, `⌛` is a partial hour of at least ten minutes, and each `🔀` is one unique attached PR. Zero values produce no badge. Badge characters are joined with no spaces; one space separates the complete badge group from the descriptive summary. The badges deliberately keep accumulating instead of collapsing into a number: a visibly growing prefix, together with `🌿`, is the nudge to stop extending an overloaded task. `🌿` means the task may be worth splitting. The plugin explains it once: fork for a parallel approach to the same goal, or start a new task when the goal has changed.
+The badges communicate severity rather than exact totals. Time uses `⌛` for ten minutes to under one hour, `⏱️` for one to under five hours, `⏰` for five to under twenty-five hours, and `🕰️` for twenty-five hours or more. Pull requests use `🔀` for one to four unique PRs, `🌿` for five to twenty-four, and `🌳` for twenty-five or more. Zero values produce no badge. Badge characters are joined with no spaces; one space separates the complete badge group from the descriptive summary. The prefix is therefore always bounded to two emoji regardless of how long the task runs or how many PRs it accumulates.
 
 ## How it works
 

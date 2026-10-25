@@ -13,13 +13,27 @@ A single development home and repository marketplace for Codex plugins created b
 | --- | --- | --- |
 | [Codex Daydream](DAYDREAM.md) | Available<br>可安装 | Turns a continuous work period, even across midnight, into a cartoon poster showing projects, focus, and supported results. [Install this plugin only](DAYDREAM.md).<br>把一段连续工作（包括跨午夜）转化成展示项目、重点与有依据成果的卡通海报。[仅安装此插件](DAYDREAM.md)。 |
 | [Codex PR Title Hook](plugins/codex-pr-title-hook/README.md) | Available<br>可安装 | Keeps Codex task titles aligned with attached pull requests and compact workflow signals.<br>根据附加的 PR 与工作信号维护 Codex 任务标题。 |
-| [Codex Footprint](plugins/codex-footprint/README.md) | Local 0.2 · Available<br>本地 0.2 · 可安装 | Global Codex storage monitoring and alerts; explicit historical occupancy analysis through local hooks and MCP. No deletion.<br>全局监测 Codex 开发存储增长并提醒，按需分析历史会话相关占用，不执行删除。 |
+| [Codex Footprint](plugins/codex-footprint/README.md) | Local 0.4.7 · Available<br>本地 0.4.7 · 可安装 | Global Codex storage monitoring and alerts; explicit historical occupancy analysis through local hooks and MCP. No deletion.<br>全局监测 Codex 开发存储增长并提醒，按需分析历史会话相关占用，不执行删除。 |
 
 <p align="center"><img src="assets/readme/section-install.svg" width="100%" alt="Install 安装"></p>
 
-Add the GitHub repository as a Codex marketplace. GitHub shorthand is supported by the Codex CLI:
+For local maintenance, keep the marketplace registered to the real path of this development checkout. Check the existing registration before installing or updating one plugin:
 
-> 将这个 GitHub 仓库添加为 Codex marketplace。Codex CLI 支持 `owner/repo` 简写形式：
+> 本地维护时，市场应始终指向本开发仓库的真实路径。安装或更新单个插件前，先检查已有市场来源：
+
+```sh
+codex plugin marketplace list --json
+# From the maintained repository root, only when registration is absent:
+codex plugin marketplace add "$(pwd -P)"
+```
+
+Preserve an existing local registration during plugin upgrades. A Git-backed marketplace uses a separate fetched checkout; it may not contain fixes that remain on a local branch. Before switching branches in a registered local checkout, keep every plugin at its accepted version and preserve other plugins' fixes. Package manifest, runtime version and actual source must agree; changing a version string alone is not an upgrade.
+
+> 更新插件时保留已有本地市场来源。Git 来源会使用独立拉取的仓库，可能不包含仅在本地分支上的修复。已注册的本地仓库切换分支前，应确保所有插件维持已验收版本，并保留其他插件的修复。插件清单、运行版本与实际源码必须一致；仅修改版本号不算升级。
+
+For a new installation without a local development checkout, add the GitHub repository instead. GitHub shorthand is supported by the Codex CLI:
+
+> 首次安装且没有本地开发仓库时，可改用 GitHub 来源。Codex CLI 支持 `owner/repo` 简写形式：
 
 ```sh
 codex plugin marketplace add wxy/WXY-Codex-Plugins
@@ -66,9 +80,9 @@ AI assistants should follow this sequence:
 
     > 读取 `.agents/plugins/marketplace.json` 并确认用户指定的插件；不要静默安装目录中的所有插件。
 
-3. Add the marketplace with `codex plugin marketplace add wxy/WXY-Codex-Plugins` instead of editing `config.toml` manually.
+3. Inspect `codex plugin marketplace list --json` and preserve an existing source. For a new registration, use the maintained local checkout for local development, or the GitHub command above for a remote installation. Use the CLI instead of editing `config.toml` manually.
 
-    > 使用 `codex plugin marketplace add wxy/WXY-Codex-Plugins` 添加 marketplace，不要手工修改 `config.toml`。
+    > 先检查 `codex plugin marketplace list --json`，保留已有来源。尚未注册时，本地开发使用维护中的本地仓库，远程安装使用上方 GitHub 命令；通过 CLI 配置，不手工修改 `config.toml`。
 
 4. Install the selected plugin with `codex plugin add <plugin-name>@wxy-codex-plugins`.
 
