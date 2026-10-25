@@ -233,7 +233,7 @@ class HistorySyncTests(unittest.TestCase):
         self.assertEqual(len(state["pr_titles"]), 2)
         self.assertEqual(len(state["pr_bodies"]), 2)
         self.assertEqual(state["active_turn_id"], "sync-turn")
-        self.assertEqual(FakeClient.title, "🔀🔀 live refresh · dashboard caching")
+        self.assertEqual(FakeClient.title, "🔀 live refresh · dashboard caching")
         self.assertIn("同步 2 个唯一 PR", effect.message)
         self.assertIn("重新计算", effect.message)
         self.assertIn("使用 AI 更新当前任务标题", effect.additional_context)
@@ -323,17 +323,17 @@ class TitleTests(unittest.TestCase):
     def test_places_metrics_before_summary(self):
         self.assertEqual(
             HOOK.compose_title("修复仪表盘缓存", 2, 4_800),
-            "⏱️⌛🔀🔀 修复仪表盘缓存",
+            "⏱️🔀 修复仪表盘缓存",
         )
 
-    def test_adds_fork_symbol_at_threshold(self):
+    def test_three_prs_and_three_hours_do_not_add_a_separate_split_symbol(self):
         self.assertEqual(
             HOOK.compose_title("修复仪表盘缓存", 3, 3 * 60 * 60),
-            "⏱️⏱️⏱️🔀🔀🔀🌿 修复仪表盘缓存",
+            "⏱️🔀 修复仪表盘缓存",
         )
 
-    def test_time_threshold_also_adds_fork_symbol(self):
-        self.assertIn("🌿 ", HOOK.compose_title("Long task", 1, 3 * 60 * 60))
+    def test_maps_five_hours_to_an_alarm_clock_severity(self):
+        self.assertEqual(HOOK.compose_title("Long task", 1, 5 * 60 * 60), "⏰🔀 Long task")
 
     def test_uses_hourglass_before_one_hour(self):
         self.assertEqual(HOOK.time_badge(20 * 60), "⌛")
@@ -344,14 +344,20 @@ class TitleTests(unittest.TestCase):
         self.assertEqual(HOOK.pr_badge(0), "")
         self.assertEqual(HOOK.compose_title("修复仪表盘缓存", 0, 0), "修复仪表盘缓存")
 
-    def test_repeats_large_badge_counts_as_a_visual_nudge(self):
-        self.assertEqual(HOOK.time_badge(5 * 60 * 60), "⏱️⏱️⏱️⏱️⏱️")
-        self.assertEqual(HOOK.pr_badge(7), "🔀🔀🔀🔀🔀🔀🔀")
+    def test_maps_counts_to_one_severity_badge_per_metric(self):
+        self.assertEqual(HOOK.time_badge(32 * 60 * 60), "🕰️")
+        self.assertEqual(HOOK.time_badge(7 * 60 * 60 + 20 * 60), "⏰")
+        self.assertEqual(HOOK.pr_badge(4), "🔀")
+        self.assertEqual(HOOK.pr_badge(5), "🌿")
+        self.assertEqual(HOOK.pr_badge(24), "🌿")
+        self.assertEqual(HOOK.pr_badge(25), "🌳")
+        self.assertEqual(HOOK.pr_badge(10_000), "🌳")
+        self.assertEqual(HOOK.time_badge(10_000 * 60 * 60), "🕰️")
 
     def test_limits_display_width_and_preserves_metrics(self):
         title = HOOK.compose_title("很长的会话概括" * 20, 3, 12_345)
         self.assertLessEqual(HOOK.display_width(title), HOOK.TITLE_DISPLAY_LIMIT)
-        self.assertTrue(title.startswith("⏱️⏱️⏱️⌛🔀🔀🔀🌿 "))
+        self.assertTrue(title.startswith("⏱️🔀 "))
         self.assertTrue(title.endswith("…"))
 
     def test_recovers_summary_from_managed_prefix(self):
@@ -383,12 +389,6 @@ class TitleTests(unittest.TestCase):
             ),
             "修复仪表盘缓存并验证刷新行为",
         )
-
-    def test_split_message_explains_symbol_and_choice(self):
-        message = HOOK.split_message(3, 10_800)
-        self.assertIn("🌿", message)
-        self.assertIn("分叉", message)
-        self.assertIn("新建任务", message)
 
     def test_stop_retains_an_ai_rewritten_summary(self):
         state = HOOK.fresh_state()

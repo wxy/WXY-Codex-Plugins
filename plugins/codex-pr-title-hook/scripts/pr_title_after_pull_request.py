@@ -30,8 +30,6 @@ TITLE_DISPLAY_LIMIT = 60
 SUMMARY_DISPLAY_LIMIT = 42
 RECENT_PR_SUMMARY_LIMIT = 3
 PR_BODY_CONTEXT_LIMIT = 900
-SPLIT_PR_THRESHOLD = 3
-SPLIT_ACTIVE_SECONDS = 3 * 60 * 60
 MAX_TURN_SECONDS = 6 * 60 * 60
 STATE_VERSION = 4
 CLIENT_INFO = {
@@ -46,8 +44,9 @@ MANAGED_TEXT_PREFIX = re.compile(
     r"^⏱\d+(?:h\d{2}m|h|m)\s+·\s+PR×\d+(?:\s+·\s+⑂)?\s+—\s+"
 )
 MANAGED_BADGE_PREFIX = re.compile(
-    r"^(?=[⏱⌛🔀🌿])(?:(?:⏱️)+(?:⌛)?|⌛|⏱️×\d+)?\s*"
-    r"(?:🔀+|🔀×\d+)?\s*(?:🌿)?\s+"
+    r"^(?=[⏱⏰🕰⌛🔀🌿🌳])"
+    r"(?:(?:🕰️)*(?:⏰)*(?:⏱️)*(?:⌛)?|⌛|⏱️×\d+)?\s*"
+    r"(?:(?:🔀+|🔀×\d+)(?:\s*🌿)?|(?:🌳)*(?:🌿)*(?:🔀)*)?\s+"
 )
 LEGACY_PR_TITLE = re.compile(r"^PR\s+#\d+\s+·\s+", re.IGNORECASE)
 
@@ -226,7 +225,6 @@ def fresh_state() -> dict[str, Any]:
         "active_seconds": 0.0,
         "active_turn_id": None,
         "turn_started_at": None,
-        "split_notified": False,
     }
 
 
@@ -270,7 +268,6 @@ def normalized_state(value: Any) -> dict[str, Any]:
     if isinstance(turn_id, str) and isinstance(started_at, (int, float)) and started_at > 0:
         state["active_turn_id"] = turn_id
         state["turn_started_at"] = float(started_at)
-    state["split_notified"] = value.get("split_notified") is True
     return state
 
 
@@ -341,21 +338,31 @@ def truncate_display(value: str, limit: int) -> str:
     return "".join(result).rstrip() + "…"
 
 
-def should_suggest_split(pr_count: int, active_seconds: float) -> bool:
-    return pr_count >= SPLIT_PR_THRESHOLD or active_seconds >= SPLIT_ACTIVE_SECONDS
+def severity_badge(count: int, low: str, medium: str, high: str) -> str:
+    if count >= 25:
+        return high
+    if count >= 5:
+        return medium
+    if count >= 1:
+        return low
+    return ""
 
 
 def time_badge(active_seconds: float) -> str:
     seconds = max(0.0, active_seconds)
-    if seconds < 10 * 60:
-        return ""
-    whole_hours = int(seconds // 3_600)
-    partial_hour = seconds - (whole_hours * 3_600) >= 10 * 60
-    return ("⏱️" * whole_hours) + ("⌛" if partial_hour else "")
+    if seconds >= 25 * 3_600:
+        return "🕰️"
+    if seconds >= 5 * 3_600:
+        return "⏰"
+    if seconds >= 3_600:
+        return "⏱️"
+    if seconds >= 10 * 60:
+        return "⌛"
+    return ""
 
 
 def pr_badge(pr_count: int) -> str:
-    return "🔀" * max(0, pr_count)
+    return severity_badge(pr_count, "🔀", "🌿", "🌳")
 
 
 def compose_title(base_title: str, pr_count: int, active_seconds: float) -> str:
@@ -446,10 +453,7 @@ def recent_pr_summary(state: dict[str, Any]) -> str | None:
 
 
 def title_badge_prefix(pr_count: int, active_seconds: float) -> str:
-    badges = time_badge(active_seconds) + pr_badge(pr_count)
-    if should_suggest_split(pr_count, active_seconds):
-        badges += "🌿"
-    return badges
+    return time_badge(active_seconds) + pr_badge(pr_count)
 
 
 def ai_title_context(state: dict[str, Any], active_seconds: float) -> str | None:
@@ -660,27 +664,13 @@ class AppServerClient:
         self.close()
 
 
-def split_message(pr_count: int, active_seconds: float) -> str:
+def sync_history_message(pr_count: int, added_count: int) -> str:
     return (
-        f"此任务已累计 {pr_count} 个 PR、约 {format_duration(active_seconds)} 的 Codex 工作时间。"
-        "标题中的 🌿 表示可考虑拆分：若下一步仍是同一目标的并行方案，可以分叉；"
-        "若目标已经变化，建议新建任务。"
-    )
-
-
-def sync_history_message(pr_count: int, added_count: int, split: bool) -> str:
-    message = (
         f"已从当前任务的历史记录同步 {pr_count} 个唯一 PR"
         f"（本次新增 {added_count} 个），并更新会话标题。"
         "时间已按历史中完成回合的起止时间重新计算；这是近似工作时长，"
         "包含回合内等待，不包含回合之间的空闲时间。"
     )
-    if split:
-        message += (
-            "标题中的 🌿 表示可考虑拆分：同一目标的并行方案可以分叉；"
-            "目标已经变化则建议新建任务。"
-        )
-    return message
 
 
 def sync_historical_pull_requests(
@@ -697,12 +687,9 @@ def sync_historical_pull_requests(
         if thread.get("name") != title:
             client.set_thread_title(session_id, title)
         state["last_managed_title"] = title
-        split = should_suggest_split(len(state["pr_urls"]), active_seconds)
-        if split:
-            state["split_notified"] = True
         return HookEffect(
             message=sync_history_message(
-                len(state["pr_urls"]), len(set(state["pr_urls"]) - previous_urls), split
+                len(state["pr_urls"]), len(set(state["pr_urls"]) - previous_urls)
             ),
             additional_context=ai_title_context(state, active_seconds),
         )
@@ -744,12 +731,8 @@ def update_managed_title(
         if thread.get("name") != title:
             client.set_thread_title(session_id, title)
         state["last_managed_title"] = title
-    message = None
-    if should_suggest_split(pr_count, active_seconds) and not state.get("split_notified"):
-        state["split_notified"] = True
-        message = split_message(pr_count, active_seconds)
     context = ai_title_context(state, active_seconds) if request_ai_summary else None
-    return title, HookEffect(message=message, additional_context=context)
+    return title, HookEffect(additional_context=context)
 
 
 def handle_event(event: Any, now: float | None = None) -> HookEffect | None:
