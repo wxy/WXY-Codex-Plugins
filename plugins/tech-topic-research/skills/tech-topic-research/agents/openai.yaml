@@ -1,0 +1,4 @@
+interface:
+  display_name: "技术选题预研"
+  short_description: "追溯技术消息的一手证据，形成清晰观点与少量值得写的选题角度"
+  default_prompt: "请使用 $tech-topic-research 预研这条技术消息，判断是否值得写，并给出依据、观点及最强反驳。"

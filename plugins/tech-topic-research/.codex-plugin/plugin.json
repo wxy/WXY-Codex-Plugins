@@ -1,0 +1,22 @@
+{
+  "name": "tech-topic-research",
+  "version": "0.1.0",
+  "description": "Evidence-first Chinese pre-research for technical stories, viewpoints, and editorial angles.",
+  "author": {
+    "name": "Xingyu Wang"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "技术选题预研",
+    "shortDescription": "核实技术消息，形成观点并判断是否值得写。",
+    "longDescription": "追溯一手证据，区分事实与推断，评估读者影响、观点增量与实际关注，提出最强反驳和少量扎实的写作角度。保持轻量，不机械打分。",
+    "developerName": "Xingyu Wang",
+    "category": "Productivity",
+    "capabilities": [
+      "Primary-source research",
+      "Editorial judgment",
+      "Counterargument analysis"
+    ],
+    "defaultPrompt": "预研这条技术消息：发生了什么，真正改变了什么，值不值得写？给出观点、最强反驳与少量扎实角度。"
+  }
+}
