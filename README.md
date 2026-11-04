@@ -14,6 +14,7 @@ A single development home and repository marketplace for Codex plugins created b
 | [Codex Daydream](DAYDREAM.md) | Available<br>可安装 | Turns a continuous work period, even across midnight, into a cartoon poster showing projects, focus, and supported results. [Install this plugin only](DAYDREAM.md).<br>把一段连续工作（包括跨午夜）转化成展示项目、重点与有依据成果的卡通海报。[仅安装此插件](DAYDREAM.md)。 |
 | [Codex PR Title Hook](plugins/codex-pr-title-hook/README.md) | Available<br>可安装 | Keeps Codex task titles aligned with attached pull requests and compact workflow signals.<br>根据附加的 PR 与工作信号维护 Codex 任务标题。 |
 | [Codex Footprint](plugins/codex-footprint/README.md) | Local 0.4.7 · Available<br>本地 0.4.7 · 可安装 | Global Codex storage monitoring and alerts; explicit historical occupancy analysis through local hooks and MCP. No deletion.<br>全局监测 Codex 开发存储增长并提醒，按需分析历史会话相关占用，不执行删除。 |
+| [技术选题预研](plugins/tech-topic-research/README.md) | Available<br>可安装 | Evidence-first Chinese research for technical stories, viewpoints, and writing angles.<br>追溯一手证据、形成观点与最强反驳，判断技术消息是否值得写。 |
 
 <p align="center"><img src="assets/readme/section-install.svg" width="100%" alt="Install 安装"></p>
 
@@ -52,6 +53,9 @@ codex plugin add codex-pr-title-hook@wxy-codex-plugins
 
 # Local development storage growth monitoring
 codex plugin add codex-footprint@wxy-codex-plugins
+
+# Evidence-first technical topic research
+codex plugin add tech-topic-research@wxy-codex-plugins
 ```
 
 Then start a new Codex task so the installed skill is loaded. **Codex Daydream** needs no hooks. **PR Title Hook** and **Codex Footprint** include lifecycle hooks; review and trust them in Codex Settings. Footprint requires one global enablement before background observation; see its [setup and query guide](plugins/codex-footprint/README.md).
@@ -138,7 +142,8 @@ WXY-Codex-Plugins/
 ├── plugins/
 │   ├── codex-daydream/
 │   ├── codex-pr-title-hook/
-│   └── codex-footprint/
+│   ├── codex-footprint/
+│   └── tech-topic-research/
 ├── tests/
 └── README.md
 ```
@@ -172,6 +177,7 @@ Plugins version independently. Release tags should include the plugin name, such
 - [Codex Daydream installation · Daydream 专属安装](DAYDREAM.md)
 - [Codex Daydream documentation · Daydream 文档](plugins/codex-daydream/README.md)
 - [Codex Footprint documentation · 开发存储增长监测文档](plugins/codex-footprint/README.md)
+- [技术选题预研 documentation · 文档](plugins/tech-topic-research/README.md)
 - [PR Title Hook documentation · PR 标题 Hook 文档](plugins/codex-pr-title-hook/README.md)
 - [Official OpenAI plugin packaging documentation · OpenAI 插件打包文档](https://developers.openai.com/plugins/build/plugins)
 
