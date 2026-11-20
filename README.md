@@ -11,6 +11,7 @@ A single development home and repository marketplace for Codex plugins created b
 
 | Plugin · 插件 | Status · 状态 | What it does · 用途 |
 | --- | --- | --- |
+| [硬核老王文风](plugins/wxy-writing-style/README.md) | Available · 可安装 | Draft, polish, review, and adapt technical writing in WXY’s voice. 按体裁起草、润色、审稿与改编。 |
 | [Codex Daydream](DAYDREAM.md) | Available<br>可安装 | Turns a continuous work period, even across midnight, into a cartoon poster showing projects, focus, and supported results. [Install this plugin only](DAYDREAM.md).<br>把一段连续工作（包括跨午夜）转化成展示项目、重点与有依据成果的卡通海报。[仅安装此插件](DAYDREAM.md)。 |
 | [Codex PR Title Hook](plugins/codex-pr-title-hook/README.md) | Available<br>可安装 | Keeps Codex task titles aligned with attached pull requests and compact workflow signals.<br>根据附加的 PR 与工作信号维护 Codex 任务标题。 |
 | [Codex Footprint](plugins/codex-footprint/README.md) | Local 0.4.7 · Available<br>本地 0.4.7 · 可安装 | Global Codex storage monitoring and alerts; explicit historical occupancy analysis through local hooks and MCP. No deletion.<br>全局监测 Codex 开发存储增长并提醒，按需分析历史会话相关占用，不执行删除。 |
