@@ -1,0 +1,16 @@
+{
+  "name": "wxy-writing-style",
+  "version": "0.1.0",
+  "description": "Xingyu Wang's genre-aware editorial voice for drafting, polishing, reviewing, and adapting technical writing.",
+  "author": {"name": "Xingyu Wang"},
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "硬核老王文风",
+    "shortDescription": "按不同体裁起草、润色、审稿和改编科技内容。",
+    "longDescription": "一个文风技能，四种操作。覆盖评论、采访、短点评、新闻叙事、技术介绍和个人回顾。不读文下评论，不冒充亲测，不自动发布。",
+    "developerName": "Xingyu Wang",
+    "category": "Productivity",
+    "capabilities": ["Drafting", "Polishing", "Read-only review", "Adaptation"],
+    "defaultPrompt": "用硬核老王文风按适合的体裁处理这篇稿件。"
+  }
+}

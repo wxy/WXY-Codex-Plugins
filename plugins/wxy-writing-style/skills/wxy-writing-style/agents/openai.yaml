@@ -1,0 +1,4 @@
+interface:
+  display_name: "硬核老王文风"
+  short_description: "按体裁起草、润色、审稿与改编科技内容"
+  default_prompt: "用 $wxy-writing-style 按适合的体裁处理这篇稿件。"
