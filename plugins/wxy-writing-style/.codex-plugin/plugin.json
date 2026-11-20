@@ -1,6 +1,6 @@
 {
   "name": "wxy-writing-style",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Xingyu Wang's genre-aware editorial voice for drafting, polishing, reviewing, and adapting technical writing.",
   "author": {"name": "Xingyu Wang"},
   "skills": "./skills/",
