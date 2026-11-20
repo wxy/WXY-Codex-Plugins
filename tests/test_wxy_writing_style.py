@@ -29,6 +29,15 @@ class WritingStyleContract(unittest.TestCase):
         for target in re.findall(r"\]\((references/[^)]*)\)", spec):
             self.assertTrue((SKILL / target).is_file(), target)
 
+    def test_four_reading_entries_and_title_acceptance(self):
+        spec = (SKILL / "SKILL.md").read_text().split("## 四个阅读入口单独设计和验收", 1)[1]
+        for marker in (
+            "标题单独拟、单独验", "把标题的承诺倒查到正文", "导读 / TL;DR",
+            "主帖给一个能独立读懂的入口", "次日帖问一个不同的问题",
+            "最后并排读", "不为短帖强造四个组件", "审稿模式仍然只提意见",
+        ):
+            self.assertIn(marker, spec)
+
     def test_genres_and_corpus_scope(self):
         genres = (SKILL / "references/genres.md").read_text()
         self.assertEqual(re.findall(r"^## (.+?)（", genres, re.M),
